@@ -434,6 +434,7 @@ async function _loadEthers() {
 }
 
 module.exports = {
+  main,
   signIn, listMerchants, requestChannel, listChannels,
   getChannelState, signVoucher, redeemVoucher, closeChannel, settle,
 };
