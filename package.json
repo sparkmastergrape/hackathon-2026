@@ -1,0 +1,25 @@
+{
+  "name": "ap4m-hackathon",
+  "version": "1.0.0",
+  "description": "Hackathon 2026 work",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sparkmastergrape/hackathon-2026.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/sparkmastergrape/hackathon-2026/issues"
+  },
+  "homepage": "https://github.com/sparkmastergrape/hackathon-2026#readme",
+  "dependencies": {
+    "viem": "^2.57.11",
+    "xrpl": "^5.3.0"
+  }
+}
