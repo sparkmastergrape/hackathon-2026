@@ -83,7 +83,7 @@ async function main() {
   console.log('Redeemed:', ethers.formatUnits(state.redeemed, 18), 'RLUSD');
 
   // cumulativeAmount = total redeemed so far + this payment (running total, not just this step)
-  const thisPayment = ethers.parseUnits(process.env.PAYMENT_RLUSD || '1', 18); // payment amount in RLUSD
+  const thisPayment = ethers.parseUnits(process.env.PAYMENT_RLUSD || '0.01', 18); // amount from PAYMENT_RLUSD
   const cumulativeAmount = state.redeemed + thisPayment;
 
   const { claimId, txHash } = await redeemVoucher(
