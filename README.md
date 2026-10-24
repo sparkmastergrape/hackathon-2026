@@ -56,6 +56,51 @@ const res = await mastercardFetch('/bin-lookup/v1/lookups', {
 
 Credentials come from `.env` — see the Mastercard block in `.env.example`.
 
+## Agent mandate demo
+
+The Mastercard leg: a human spend mandate in Consent Management becomes
+network-enforced spend controls on a Business Payment Controls virtual card,
+and revoking the mandate kills the card.
+
+```bash
+npm run demo:mandate
+```
+
+It runs as a **dry run** unless `--live` is passed and credentials are present,
+printing the exact HTTP request each step would send. That makes the whole flow
+reviewable before any sandbox project exists.
+
+```bash
+node demo/agent-mandate.mjs --live
+```
+
+The modules behind it:
+
+- [`mastercard/consent.mjs`](mastercard/consent.mjs) — Consent Management
+  client, plus `agentSpendMandate()`, which encodes an agent's limits into a
+  consent record.
+- [`mastercard/bpc.mjs`](mastercard/bpc.mjs) — Business Payment Controls
+  client, plus `spendControlsFromMandate()`, which turns those same limits into
+  a spec-valid `inControlRules` entry.
+- [`mastercard/jwe.mjs`](mastercard/jwe.mjs) — JWE payload encryption, which
+  Consent Management requires on three of its six endpoints.
+- [`mastercard/request.mjs`](mastercard/request.mjs) — per-service base URLs,
+  idempotency keys, error-envelope parsing, dry run.
+
+Note the two hosts: Consent Management is on
+`sandbox.api.mastercard.com/openapis/authentication`, Business Payment Controls
+on `sandbox.apiedge.mastercard.com/commercial`.
+
+## Tests
+
+```bash
+npm test
+```
+
+No network and no credentials — the tests check that the request bodies match
+the published OpenAPI specs: required fields, `negate` flags, ISO-4217 numeric
+currency codes, offset-bearing timestamps, and the `yyyy-MM` expiry regex.
+
 ## Docs
 
 - [Mastercard track playbook](docs/mastercard-track-playbook.md) — which

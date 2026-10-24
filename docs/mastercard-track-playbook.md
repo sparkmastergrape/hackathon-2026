@@ -215,6 +215,40 @@ Shortcuts: [Postman collection](https://developer.mastercard.com/platform/docume
 and every service's API Reference has a **Download Spec** button for
 OpenAPI-generated clients.
 
+## What's built in this repo
+
+Legs 1 and 2 of the suggested build below are implemented and dry-run tested:
+[`demo/agent-mandate.mjs`](../demo/agent-mandate.mjs) (`npm run demo:mandate`),
+on top of [`mastercard/consent.mjs`](../mastercard/consent.mjs) and
+[`mastercard/bpc.mjs`](../mastercard/bpc.mjs). It runs without credentials and
+prints the exact requests a live run would send.
+
+Things worth knowing that only showed up once the specs were read:
+
+- **Two different hosts.** Consent Management is on
+  `sandbox.api.mastercard.com/openapis/authentication`. Business Payment
+  Controls is on `sandbox.apiedge.mastercard.com/commercial` — not the
+  platform's usual host. New BPC customers use that `sandbox.apiedge` URL;
+  `mtf.apiedge.mastercard.com/commercial` still works for existing ones.
+- **Consent Management needs JWE.** Three of its six endpoints
+  (`create-consents`, `start-authentication`, `verify-authentication`) are
+  marked `x-mastercard-api-encrypted: true`: the whole body is encrypted into a
+  `jweEncryptedData` field, root to root. You need a client encryption
+  certificate on top of the OAuth key, so budget for it. `GET` and `DELETE` of
+  consents are in the clear.
+- **A user-details-only consent avoids PANs entirely.** `cardDetails` is
+  optional; supplying `userDetails` instead returns a `consentToken` rather
+  than a `cardReference`. For an agent-mandate demo that's the better variant —
+  no card data anywhere in the flow.
+- **BPC control rules are picky.** `negate` is required on every control block,
+  currency codes are ISO-4217 *numeric* strings (`"840"`, not `"USD"`),
+  timestamps need an explicit offset rather than `Z`, and `expiry` is `yyyy-MM`
+  against `^20[2-9][0-9]-(0[1-9]|1[012])$`. `action: "APPROVE"` means only
+  transactions matching every control are approved.
+- **Start at `GET /entities/user-entity`.** Everything in BPC hangs off an
+  entity GUID, and that endpoint is how you find yours.
+- Writes take an `Idempotency-Key` header (a UUID, optionally suffixed).
+
 ## Suggested build, if you want one answer
 
 A three-leg demo that uses only self-serve sandbox surfaces:

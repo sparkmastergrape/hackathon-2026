@@ -4,8 +4,9 @@
   "description": "Hackathon 2026 work",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "mcp:mastercard": "node server.mjs"
+    "test": "node --test test/*.test.mjs",
+    "mcp:mastercard": "node server.mjs",
+    "demo:mandate": "node demo/agent-mandate.mjs"
   },
   "repository": {
     "type": "git",
@@ -22,6 +23,7 @@
   "dependencies": {
     "@mastercard/developers-agent-toolkit": "^0.1.6",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "mastercard-client-encryption": "^1.10.8",
     "mastercard-oauth1-signer": "^1.2.0",
     "node-forge": "^1.4.0",
     "viem": "^2.57.11",
