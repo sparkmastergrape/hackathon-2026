@@ -1,0 +1,92 @@
+{
+  "model": "stax",
+  "size": {
+    "w": 400,
+    "h": 672
+  },
+  "address": "ra7Zr8ddy9tB88RaXL8B87YkqhEJG2vkAJ",
+  "screens": [
+    {
+      "step": 1,
+      "file": "01.png",
+      "bytes": 8785,
+      "texts": [
+        "Review transaction",
+        "Swipe to review",
+        "Reject",
+        "1 of 5"
+      ]
+    },
+    {
+      "step": 2,
+      "file": "02.png",
+      "bytes": 17137,
+      "texts": [
+        "Transaction Type",
+        "Payment",
+        "Account",
+        "ra7Zr8ddy9tB88RaXL8",
+        "B87YkqhEJG2vkAJ",
+        "Source Tag",
+        "402",
+        "Destination Tag",
+        "4242",
+        "Reject",
+        "2 of 5"
+      ]
+    },
+    {
+      "step": 3,
+      "file": "03.png",
+      "bytes": 19558,
+      "texts": [
+        "Invoice ID",
+        "a1b2c3d4e5f6000000",
+        "0000000000000000",
+        "0000000000000000",
+        "000000000000ff",
+        "Amount",
+        "XRP 0.001",
+        "Fee",
+        "XRP 0.000012",
+        "Destination",
+        "rpw2Tcby6ar81Y73Ryj",
+        "NgqRkn4Sf7UH9Rq",
+        "Reject",
+        "3 of 5"
+      ]
+    },
+    {
+      "step": 4,
+      "file": "04.png",
+      "bytes": 10800,
+      "texts": [
+        "Memo Type [1]",
+        "x402/invoice",
+        "Memo Data [1]",
+        "inv-2026-10-24-0001",
+        "Reject",
+        "4 of 5"
+      ]
+    },
+    {
+      "step": 5,
+      "file": "05.png",
+      "bytes": 9356,
+      "texts": [
+        "Sign transaction?",
+        "Reject",
+        "5 of 5",
+        "Hold to sign"
+      ]
+    },
+    {
+      "step": 6,
+      "file": "06.png",
+      "bytes": 6218,
+      "texts": [
+        "Transaction signed"
+      ]
+    }
+  ]
+}
