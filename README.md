@@ -191,13 +191,30 @@ carries `channelId` and `claimId` as indexed topics. The claim IDs shown in the 
 portal — `0x99e40a07…` for payment 1, `0xce2bb492…` for payment 2 — match those topics,
 which is what ties the portal's receipt to the chain.
 
-**Not confirmed.** That `topic0` is the event *named* `VoucherRedeemed`. The explorer
-reports the contract source as unverified, so it renders the raw topic rather than a
-name, and the signature could not be recovered: `keccak256` of eight plausible
-`VoucherRedeemed(...)` signatures matched none of it. Treat the name as AP4M's label for
-this log, and the `topic0` plus the matching `claimId` as the evidence. Verifying the
-contract on the explorer would close this, and would also let judges read the event name
-the rubric asks them to look for.
+**Confirmed — the log is `VoucherRedeemed`.** AP4M's own SDK helper declares the
+signature at `ap4m-hackathon-sdk.js:203`:
+
+```
+VoucherRedeemed(bytes32,bytes32,bytes32,bytes32,address,bytes32,address,address,uint256,uint256,uint256)
+```
+
+`keccak256` of that string is exactly the `topic0` above. Reproduce it in one command,
+offline:
+
+```bash
+node -e "console.log(require('viem').toEventSelector('VoucherRedeemed(bytes32,bytes32,bytes32,bytes32,address,bytes32,address,address,uint256,uint256,uint256)'))"
+```
+
+**But the explorer will not show you that name.** The `PaymentLedger` source is
+unverified on the explorer and absent from Sourcify, and the topic is in neither the
+openchain nor the 4byte signature registry — all four checked on 2026-10-25. A judge who
+follows the rubric to the explorer sees an unnamed topic hash and has no way, from there,
+to tell it is the event they were sent to find. The name is recoverable only from the
+SDK, as above.
+
+Verifying the contract is AP4M's to do — it needs their Solidity source, which is not
+published. Until then, the hash above is the bridge between the rubric's wording and what
+the explorer actually renders.
 
 Verify any of them without AP4M being reachable at all:
 
