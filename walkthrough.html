@@ -215,6 +215,10 @@
     human in the loop, redeems it against a settlement contract, and the money lands
     in a merchant wallet — and anyone can verify that it happened without trusting
     us or the payment service.</p>
+    <p>There are <strong>two demos</strong>. The first drives the payment directly
+    through the SDK. The second is the one to lead with: the agent is given a task
+    it cannot finish and a spending limit, walks into an <strong>HTTP 402</strong>,
+    reads the price, decides on its own, pays, and uses what it bought.</p>
   </div>
 
   <div class="section">
@@ -250,10 +254,13 @@
         <thead><tr><th>Role</th><th>Address</th><th>Needs gas</th></tr></thead>
         <tbody>
           <tr><td>Agent (pays)</td><td><code>0x37F2F4166646Ea3cea94BB37BaBD88a01F52A7A2</code></td><td>Yes</td></tr>
-          <tr><td>Merchant (receives)</td><td><code>0xFf9395aa0918A789B4dC40e7cf147A73c92fcbf8</code></td><td>No</td></tr>
+          <tr><td>Merchant (receives)</td><td><code>0xFf9395aa0918A789B4dC40e7cf147A73c92fcbf8</code></td><td>In demo 2</td></tr>
         </tbody>
       </table>
     </div>
+    <p>In demo 1 the agent submits the redemption, so only it needs gas. In demo 2 the
+    merchant submits its own redemptions and pays for them — it holds about 78 XRP. The
+    agent's key never goes near the merchant process; the agent only ever signs.</p>
   </div>
 
   <div class="section">
@@ -272,6 +279,9 @@
     <p>The two underlying checks still exist on their own if you want to narrow a
     problem: <code>node verify-wallets.mjs</code> for keys, gas and addresses, and
     <code>node signin-check.cjs</code> for the service side.</p>
+    <p><strong>It does not cover demo 2.</strong> For the x402 run, do one rehearsal
+    pass end to end before the room fills — start the merchant, buy once, confirm you
+    see <code>redemption Confirmed</code> — and leave the merchant running afterwards.</p>
 
     <div class="callout">
       <h3>Check the gas before you stand up</h3>
@@ -282,7 +292,7 @@
   </div>
 
   <div class="section">
-    <h2>Running it</h2>
+    <h2>Demo 1 — the SDK path</h2>
 <pre><code>node run-ap4m.cjs</code></pre>
     <p>One command, six steps, about twenty seconds. It pays <code>0.01</code> RLUSD
     by default — set <code>PAYMENT_RLUSD</code> in <code>.env</code> to change it.
@@ -322,6 +332,123 @@
       <p>The agent signs a final checkpoint and the channel closes.</p>
       <p class="say">"The allowance is withdrawn. Nothing is left open."</p>
     </div>
+  </div>
+
+  <div class="section">
+    <h2>Demo 2 — the x402 paywall</h2>
+    <p>This is the autonomy demo. A merchant sells one measured dataset the agent
+    cannot produce for itself. The agent is told what to report and given a ceiling,
+    and nothing else — no price, no approval, no human in the loop.</p>
+
+    <div class="flow">
+      <div class="node">
+        <span class="r">Asks</span>
+        <span class="t">Agent</span>
+        <span class="d">Ceiling 0.10 RLUSD per purchase.</span>
+      </div>
+      <div class="node">
+        <span class="r">Refuses</span>
+        <span class="t">HTTP 402</span>
+        <span class="d">Quotes 0.05 RLUSD in a signed challenge.</span>
+      </div>
+      <div class="node">
+        <span class="r">Decides</span>
+        <span class="t">Agent</span>
+        <span class="d">Under the ceiling, so it signs and pays.</span>
+      </div>
+      <div class="node">
+        <span class="r">Releases</span>
+        <span class="t">Merchant</span>
+        <span class="d">Redeems on chain, then serves the data.</span>
+      </div>
+    </div>
+
+    <p>Two terminals. Start the merchant first and leave it running:</p>
+<pre><code>npm run x402:merchant     # terminal 1
+npm run x402:agent        # terminal 2</code></pre>
+    <p>The agent prints each decision as it makes it, so the audience watches the
+    reasoning rather than a spinner. About fifteen seconds.</p>
+
+    <h3 style="margin-top:1.5rem">What to say while it runs</h3>
+
+    <div class="beat">
+      <h3>1 — The agent asks for something it cannot have</h3>
+      <p>A plain <code>GET</code> with no payment attached. The merchant answers
+      <code>402 Payment Required</code> with a price and a channel binding.</p>
+      <p class="say">"It just got told no. Nobody is going to tell it what to do about
+      that."</p>
+    </div>
+    <div class="beat">
+      <h3>2 — It decides for itself</h3>
+      <p>The quoted 0.05 RLUSD is under the agent's standing 0.10 ceiling, so it pays.
+      Above the ceiling it would refuse — the limit is the whole mandate.</p>
+      <p class="say">"That's the only instruction it has: a budget. No approval step,
+      no confirmation dialog."</p>
+    </div>
+    <div class="beat">
+      <h3>3 — It pays and gets the data</h3>
+      <p>The agent signs a voucher, the merchant redeems it against the PaymentLedger
+      and releases the resource in the same request.</p>
+      <p class="say">"One HTTP round trip, and a real settlement happened inside it."</p>
+    </div>
+    <div class="beat">
+      <h3>4 — It uses what it bought</h3>
+      <p>The last line of output names the weakest surface in the dataset. That
+      sentence is not in the code anywhere — it only exists because the purchase
+      succeeded.</p>
+      <p class="say">"It couldn't have written that line without buying the data.
+      That's the point of the whole thing."</p>
+    </div>
+
+    <div class="callout ok">
+      <h3>The proof, read back off the chain</h3>
+      <p>Not from the agent's own output. Verified for the run on 24 October:</p>
+<pre><code>redemption 0xbf36acf4…  block 9228163  status success
+to         PaymentLedger 0xcAB42800…
+selector   0x21eb2efb = keccak256("redeemVoucher((bytes32,uint256),bytes)")
+sent by    0xFf9395aa…  the merchant's submitter, not the agent
+
+VoucherRedeemed
+  claimId  0x892509cc…   (the same id the agent printed)
+  agent    0x37F2F416…
+  amount   0.05 RLUSD    channel total 0.10 -> 0.15
+
+settlement 0xc0d35a87…  block 9228165
+           vault 0x83DD9cD0… -> payout 0xFf9395aa…   0.05 RLUSD
+
+payout balanceOf: 0.13 before, 0.18 after</code></pre>
+      <p>The amount settled is the amount quoted in the 402, and the claim ID in the
+      event is the one the agent reported. Two blocks between the redemption and the
+      money arriving.</p>
+    </div>
+
+    <div class="callout ok" style="margin-top:1.5rem">
+      <h3>If a judge asks "what stops it overspending?" — show them</h3>
+      <p>Start the merchant priced above the ceiling and run the agent again:</p>
+<pre><code>MERCHANT_PORT=8412 RESOURCE_PRICE_RLUSD=0.50 \
+  MERCHANT_STATE_DIR=./.refusal-merchant-state npm run x402:merchant
+
+MERCHANT_PORT=8412 AGENT_CEILING_RLUSD=0.10 \
+  AGENT_STATE_DIR=./.refusal-agent-state node x402-agent.mjs refusal-demo</code></pre>
+      <p>The agent reads the price, refuses, signs nothing and exits 3. Two layers
+      refuse independently — the agent's own check and the SDK's
+      <code>maximumAmount</code>, the second still refusing when the first is
+      skipped. Both land before a voucher exists.</p>
+      <p><code>node refusal-witness.mjs after &lt;channel&gt; &lt;label&gt;</code> then
+      shows the chain unchanged: same redemption count, no new claim IDs. The refusal
+      leaves no trace because nothing happened.</p>
+      <p><strong>It holds one base unit from the limit.</strong> At
+      <code>100000000000000001</code> base units against a ceiling of
+      <code>100000000000000000</code>, both layers still refuse. At exactly the
+      ceiling it buys, and settles for precisely that amount — so the comparison is
+      <code>&gt;</code> and the ceiling is <strong>inclusive</strong>. If a judge asks
+      whether the limit is spendable: yes, to the base unit.</p>
+    </div>
+
+    <p style="margin-top:1.5rem">Three payments ran on the one open channel
+    <code>0x6d824358…</code>, taking its cumulative total from 0 to 0.15 RLUSD. That
+    is the micropayment case the first demo never exercised: one channel, many
+    vouchers, one on-chain cap.</p>
   </div>
 
   <div class="section">
@@ -375,20 +502,60 @@
       merchant payout when it opens, so the payout wallet must be registered on the
       portal first or the run fails at step 2.</p>
     </div>
+
+    <div class="callout">
+      <h3>Every x402 merchant failure is the same silent 503</h3>
+      <p>The merchant swallows each internal error into
+      <code>503 payment_pending_or_unavailable</code>, which says nothing about the
+      cause. Two different defects wore that same mask for an hour. We added error
+      logging to the merchant's two <code>catch</code> blocks — if it 503s on stage,
+      <strong>look at terminal 1</strong>, not at the agent.</p>
+    </div>
+
+    <div class="callout">
+      <h3>Do not delete the merchant state directory after a failure</h3>
+      <p>A payment the merchant has retained but not completed is the only way the
+      agent gets what it already paid for. Wiping
+      <code>.x402-merchant-state/</code> mid-flight orphaned 0.05 RLUSD — paid, never
+      delivered. Re-run the agent with the <em>same</em> operation name instead:
+      <code>node x402-agent.mjs &lt;operation&gt;</code>.</p>
+      <p>If the merchant was killed rather than interrupted, it leaves
+      <code>merchant.lock</code> behind and refuses to start. Delete the lock —
+      never <code>merchant.sqlite</code>.</p>
+    </div>
+
+    <div class="callout">
+      <h3>Give every purchase a new operation name</h3>
+      <p>Reusing one returns the earlier purchase instead of buying again, which on
+      stage looks like a payment that silently did nothing. The agent generates a
+      fresh name on each run; only pass one explicitly when you are deliberately
+      resuming.</p>
+    </div>
   </div>
 
   <div class="section">
     <h2>What we have not done</h2>
     <p>Say this plainly if asked. It is a better answer than being caught out.</p>
     <ul>
-      <li><strong>One payment per channel.</strong> Every run so far opened and closed
-      its own channel. Multiple vouchers on a single open channel — the actual
-      micropayment case — is untested.</li>
       <li><strong>No cross-team payments.</strong> AP4M returns an empty merchant
       list; the organizers have not enabled it.</li>
-      <li><strong>Demo 2 (x402 over HTTP) not run.</strong> We did the SDK path only.</li>
-      <li><strong>Small amounts only.</strong> Two payments of 0.01 RLUSD against a 20
-      RLUSD budget. Nothing has been pushed near a cap or a minimum.</li>
+      <li><strong>The merchant is localhost only.</strong> It binds
+      <code>127.0.0.1</code>. Reaching it from another machine needs HTTPS, so the
+      agent and the merchant run on the same laptop.</li>
+      <li><strong>Small amounts only.</strong> The largest single payment is 0.05
+      RLUSD against a 20 RLUSD budget. Nothing has been pushed near the channel cap
+      or a minimum.</li>
+      <li><strong>One base unit below the ceiling was not run.</strong> Equal and
+      one-above were, which is the pair that decides the comparison. The run below
+      the limit would add nothing but completeness.</li>
+      <li><strong>Three edits to the vendor helper.</strong> <code>ap4m-x402.mjs</code>
+      came from the service and did not run here unmodified: a directory
+      <code>fsync</code> that Windows refuses, a verification that raced its own
+      submission, and the error logging above. All three are commented in the file and
+      written up in <code>X402.md</code>. Say so if asked — it is a finding worth
+      reporting to the organizers, not something to hide.</li>
+      <li><strong>Only one merchant, selling one thing.</strong> There is no catalogue,
+      no price negotiation and no second seller to choose between.</li>
     </ul>
   </div>
 
@@ -401,6 +568,11 @@
       minutes. Let it; it usually resolves.</li>
       <li><strong>RPC times out.</strong> Transient and common under event load.
       Re-run. It is not a failure of the payment.</li>
+      <li><strong>The merchant 503s.</strong> Look at terminal 1 for the logged cause.
+      Then re-run the agent with the same operation name — a retained payment replays
+      and delivers. Do not wipe state.</li>
+      <li><strong>The merchant will not start.</strong> Stale
+      <code>merchant.lock</code>. Delete it, keep the database.</li>
       <li><strong>Everything is broken.</strong> Fall back to the receipt trail. The
       payments already happened and are permanently on chain — the evidence does not
       depend on anything working in the room.</li>
@@ -409,7 +581,7 @@
 
   <footer>
     XRPL EVM Testnet, chain 1449000. Test RLUSD with no financial value.
-    Verified 24 October 2026.
+    Verified 24–25 October 2026.
   </footer>
 
 </div>

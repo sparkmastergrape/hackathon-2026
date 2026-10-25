@@ -168,3 +168,13 @@ prep/wallets.json
 # fork-session device captures — withheld by JD, not for a public repo
 speculos-xrp/device-screens.png
 speculos-xrp/shots/
+.x402-merchant-state/
+.x402-agent-state/
+
+# x402 state dirs from any gate or probe run (sqlite, locks) — never committed
+*-merchant-state/
+*-agent-state/
+
+# refusal-case scratch snapshots (regenerate with refusal-witness.mjs)
+.refusal-witness-*.json
+*-sdk-state/
