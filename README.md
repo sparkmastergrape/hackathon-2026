@@ -72,14 +72,20 @@ within each sponsor rather than against each other.
 Submission order, strongest first — the ranking rule is that *a filing nobody can argue
 with beats a better filing that needs careful handling*:
 
-| # | Filing | To | Why it ranks here |
-|---|---|---|---|
-| 1 | [`01-signer-return-type.md`](filings/01-signer-return-type.md) | Ledger | A published type that does not match the shipped package. Admits no interpretation. |
-| 2 | [`03-derivation-path.md`](filings/03-derivation-path.md) | Ledger | Two examples on one page that disagree; one uses Bitcoin's coin type for XRP. |
-| 3 | [`02-chain-id-only-mainnet.md`](filings/02-chain-id-only-mainnet.md) | Ledger | A documentation *gap*, not a wrong value. See the note below. |
-| 4 | [`04-clear-signing-payment.md`](filings/04-clear-signing-payment.md) | Ledger | Worth the most, needs the most care. Scoped to `Payment`. Carries screen sets from three devices. |
-| 5 | [`05-ap4m-dead-faucet.md`](filings/05-ap4m-dead-faucet.md) | Mastercard / AP4M | A served config value pointing at a host with no DNS records. One DNS lookup demonstrates it. |
-| 6 | [`06-two-judging-rubrics.md`](filings/06-two-judging-rubrics.md) | Mastercard / AP4M | The integration guide and the workshop deck each self-describe as the judging criteria and score different things. |
+| # | Filing | To | Status | Why it ranks here |
+|---|---|---|---|---|
+| 1 | [`01-signer-return-type.md`](filings/01-signer-return-type.md) | Ledger | **filed** — [issue #2051](https://github.com/LedgerHQ/device-sdk-ts/issues/2051) | A published type that does not match the shipped package. Admits no interpretation. |
+| 2 | [`03-derivation-path.md`](filings/03-derivation-path.md) | Ledger | **filed** — [PR #2050](https://github.com/LedgerHQ/device-sdk-ts/pull/2050) | Two examples on one page that disagree; one uses Bitcoin's coin type for XRP. |
+| 3 | [`02-chain-id-only-mainnet.md`](filings/02-chain-id-only-mainnet.md) | Ledger | drafted | A documentation *gap*, not a wrong value. See the note below. |
+| 4 | [`04-clear-signing-payment.md`](filings/04-clear-signing-payment.md) | Ledger | drafted | Worth the most, needs the most care. Scoped to `Payment`. Carries screen sets from three devices. |
+| 5 | [`05-ap4m-dead-faucet.md`](filings/05-ap4m-dead-faucet.md) | Mastercard / AP4M | drafted | A served config value pointing at a host with no DNS records. One DNS lookup demonstrates it. |
+| 6 | [`06-two-judging-rubrics.md`](filings/06-two-judging-rubrics.md) | Mastercard / AP4M | drafted | The integration guide and the workshop deck each self-describe as the judging criteria and score different things. |
+
+**Two are filed upstream, against Ledger's own repository** (2026-10-25, both open):
+`03` as a documentation PR fixing the `signTransaction` derivation-path example, and `01`
+as an issue reporting that the developer portal serves XRP signer docs from before the
+2026-10-22 fix. Track 01 says bug reports and PRs count; these are that, in Ledger's
+issue tracker rather than in a slide. `filings/SUBMISSIONS.md` tracks the rest.
 
 `filings/evidence/` holds full device screen sets from Flex, Stax and Apex P (28 files),
 with a capture script that reproduces any of the three runs.
@@ -121,7 +127,8 @@ exercised all four policy outcomes and landed two real transactions. Hashes belo
 substitutes a software key for the device, and the device leg has otherwise only been
 exercised on Speculos. The gate has no authentication and keeps state in memory.
 Non-`Payment` transaction types show a "no preview yet" notice and need the device's
-blind-signing setting. None of the six filings has been submitted.
+blind-signing setting. Four of the six filings are drafted but not yet sent; the other
+two are filed and open upstream, linked in the table above.
 
 ## Transactions
 
