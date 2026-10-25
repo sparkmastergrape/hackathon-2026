@@ -195,6 +195,13 @@ chain-of-custody, including the claim-ID matching, is in
 | Agent redeems a signed voucher (`redeemVoucher`, 147,087 gas) | `0xe39c8fb5b1868c94db686f89a614710bcc884c16cba8cc5fe9484a99cc5e0bf6` |
 | Vault pays the merchant 0.01 RLUSD | `0x23c4beb9264b7ee3f0e2ef81182c1605f8d7045954aa1c750386e6e243389a6c` |
 
+**Two more on this chain, not in the eight counted above.** The x402 run of 2026-10-24
+landed redemption `0xbf36acf4f215a0b8205f8ba917e1a85ee51f5871b6ea7745124fff98a3b77231`
+and settlement `0xc0d35a87a865475084143258b3040d51e69b11e86b4a593df896651b6cf91e33`,
+with the RLUSD payout read by `balanceOf` before and after. They are recorded in
+[`X402.md`](X402.md) rather than in the tables above, which hold the two halves of the
+project as first measured.
+
 ### The redemption event — what to open
 
 AP4M's judging asks for a `VoucherRedeemed` event on the explorer at the `PaymentLedger`
@@ -262,21 +269,51 @@ Live, on testnet, no recorded output. `npm run predemo` is the gate on starting 
 it checks the wallets, the registration and the gas, and exits non-zero if the run would
 fail. Do not skip it in front of an audience.
 
+The 402 purchase needs two terminals: the merchant binds `127.0.0.1` and stays running.
+
 | # | Step | Command | What the room sees |
 |---|---|---|---|
 | 1 | Pre-flight | `npm run predemo` | exit 0 — wallets funded, agent registered |
-| 2 | Agent pays, unattended | `npm run demo` | channel opened, voucher signed, settled, closed |
-| 3 | Proof, from a public node | `node verify-receipt-onchain.mjs <hash>` | the redemption and the RLUSD payout, read from chain |
-| 4 | The boundary | `ledger-approver/` — seed a large payment | it stops; approve it on the device |
+| 2 | Merchant, paywalled | `npm run x402:merchant` | one resource behind HTTP 402, priced 0.05 RLUSD |
+| 3 | Agent reads the 402 and pays | `npm run x402:agent` | 402 → price read → decides → voucher signed → resource delivered |
+| 4 | Proof, from a public node | `node verify-receipt-onchain.mjs <hash>` | the redemption and the RLUSD payout, read from chain |
+| 5 | The ceiling refuses | a merchant priced above the ceiling, then `node x402-agent.mjs <operation>` | exit 3, no voucher signed, chain unchanged |
+| 6 | The boundary | `ledger-approver/` — seed a large payment | it stops; approve it on the device |
 
-Steps 1–3 are the autonomy story and need no person beyond pressing return. Step 4 is the
-exception path, and is the only point a human appears.
+Step 3 is the judged claim in one command: the agent reads the 402, chooses to pay, signs
+and submits, with nobody in the path. Step 5 is that same autonomy declining. Steps 1–5
+need no person beyond pressing return. Step 6 is the exception path, and is the only
+point a human appears.
 
-**Measured** for steps 1–3: the hashes in [Transactions](#transactions) came from this
-sequence. **Not measured:** the x402 leg (`example-x402-agent.mjs` with
-`example-x402-merchant.mjs`) is where the literal 402 response appears, and it has not
-been run end to end from this checkout. If the demo needs to show the 402 itself rather
-than the payment it causes, rehearse that pair first.
+`npm run demo` (`run-ap4m.cjs`) is the same payment without the HTTP layer, and is the
+shorter path if the room does not need to see the 402 itself. The hashes in
+[Transactions](#transactions) came from that sequence.
+
+**Measured.** Both halves of the x402 story — the purchase and the refusal — have been
+run and read back from chain rather than from the agent's own output:
+
+- Steps 2 and 3, 2026-10-24, one pass and no retries, verified by step 4: redemption
+  `0xbf36acf4f215a0b8205f8ba917e1a85ee51f5871b6ea7745124fff98a3b77231`, settlement
+  `0xc0d35a87a865475084143258b3040d51e69b11e86b4a593df896651b6cf91e33`, payout RLUSD
+  0.13 → 0.18 read by `balanceOf`. The `claimId` the agent printed is the one in the
+  `VoucherRedeemed` event. Written up in [`X402.md`](X402.md).
+- Step 5, 2026-10-25, at a wide margin and again one base unit from the ceiling, with a
+  before/after chain witness showing zero new claim IDs and a cumulative delta of zero.
+  Both refusal layers hold independently — the agent's own check, and `maximumAmount`
+  inside the SDK with that pre-check skipped. The exactly-equal case is the control and
+  buys, which is what makes the comparison `>` and the ceiling inclusive. Written up in
+  [`refusal-case.md`](workspace/tracks/build/stages/03-prove/output/refusal-case.md).
+
+**Not measured: the timing.** This is six steps rather than four and has not been run
+end to end against a clock. If three minutes is a hard limit, steps 1, 3 and 4 are the
+spine; 2 is setup, and 5 and 6 are additions.
+
+**Two traps before running it live**, both found the hard way and both detailed in
+`X402.md`: give every purchase a new `operation` name, and do not delete
+`.x402-merchant-state/` while a payment row is incomplete — the retained payment is the
+only way the agent gets what it already paid for. The vendor's own sample pair,
+`example-x402-agent.mjs` and `example-x402-merchant.mjs`, is kept unmodified for
+reference and has not been run from this checkout.
 
 ## The Mastercard track
 
