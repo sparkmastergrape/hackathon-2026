@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mandate — Tier 0 Spike</title>
+    <style>
+      :root {
+        --bg: #0f1115; --panel: #171a21; --line: #272b35;
+        --fg: #e6e8ee; --dim: #9aa1b1;
+        --ok: #4ade80; --err: #f87171; --warn: #fbbf24; --act: #60a5fa;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--fg); padding: 24px; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      .sub { color: var(--dim); font-size: 13px; margin-bottom: 20px; }
+      .grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
+      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+      .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+      .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+                  color: var(--dim); margin: 0 0 12px; font-weight: 600; }
+      button { width: 100%; padding: 10px 12px; margin-bottom: 8px; border-radius: 7px;
+               border: 1px solid var(--line); background: #222734; color: var(--fg);
+               font-size: 14px; cursor: pointer; }
+      button:hover:not([disabled]) { background: #2b3141; }
+      button[disabled] { opacity: .4; cursor: not-allowed; }
+      button.primary { background: #2f6df6; border-color: #2f6df6; }
+      button.primary:hover { background: #4a80f8; }
+      label { display: block; font-size: 12px; color: var(--dim); margin: 12px 0 4px; }
+      input { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line);
+              background: #10131a; color: var(--fg); font-family: ui-monospace, monospace; font-size: 12px; }
+      .state { padding: 10px 12px; border-radius: 7px; font-size: 13px; font-weight: 600;
+               margin-bottom: 14px; border: 1px solid var(--line); background: #10131a; }
+      .state.ok { color: var(--ok); border-color: #1f4d33; }
+      .state.err { color: var(--err); border-color: #4d2020; }
+      .state.warn { color: var(--warn); border-color: #4d3f1a; }
+      .state.busy { color: var(--act); border-color: #1f3a5c; }
+      pre { background: #10131a; border: 1px solid var(--line); border-radius: 7px;
+            padding: 10px; font-size: 11.5px; line-height: 1.5; overflow: auto;
+            max-height: 240px; margin: 0 0 12px; color: var(--dim);
+            font-family: ui-monospace, SFMono-Regular, monospace; white-space: pre-wrap;
+            word-break: break-all; }
+      #log { background: #0b0d12; border: 1px solid var(--line); border-radius: 7px;
+             padding: 10px; height: 300px; overflow-y: auto; font-size: 11.5px;
+             font-family: ui-monospace, monospace; line-height: 1.6; }
+      .line { white-space: pre-wrap; word-break: break-all; }
+      .line.ok { color: var(--ok); }
+      .line.err { color: var(--err); }
+      .line.warn { color: var(--warn); }
+      .line.action { color: var(--act); font-weight: 600; }
+      .note { font-size: 12px; color: var(--dim); line-height: 1.6; }
+      code { background: #10131a; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <h1>Mandate — Tier 0 Spike</h1>
+    <div class="sub">
+      Gate A: does <code>device-signer-kit-ethereum</code> sign our EIP-712 Mandate,
+      and what does the device actually show? Observed, not assumed.
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <h2>Device</h2>
+          <div id="state" class="state idle">idle</div>
+          <button id="btnConnect" class="primary">1 · Connect (WebHID)</button>
+          <button id="btnAddress" disabled>2 · Get address (confirm on device)</button>
+          <button id="btnSign" disabled>3 · Sign Mandate (EIP-712)</button>
+          <button id="btnDisconnect" disabled>Disconnect</button>
+
+          <label for="originToken">
+            originToken — open question #3. Blank = test without it.
+          </label>
+          <input id="originToken" placeholder="(leave blank first)" />
+        </div>
+
+        <div class="panel" style="margin-top: 16px">
+          <h2>Before you start</h2>
+          <div class="note">
+            1. Unlock the Ledger.<br />
+            2. Open the <strong>Ethereum</strong> app on it.<br />
+            3. Chrome or Edge only — WebHID.<br />
+            4. Click Connect, then pick the device in the browser prompt.<br /><br />
+            Derivation path <code>44'/60'/0'/0/0</code>. Testnet only.
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h2>Verdict</h2>
+          <pre id="verdict">run steps 1 → 3</pre>
+
+          <h2>Device info</h2>
+          <pre id="deviceInfo">—</pre>
+
+          <h2>Address</h2>
+          <pre id="addressOut">—</pre>
+
+          <h2>What we expect to be signed (local)</h2>
+          <pre id="expected">—</pre>
+
+          <h2>Signature returned</h2>
+          <pre id="sigOut">—</pre>
+        </div>
+
+        <div class="panel" style="margin-top: 16px">
+          <h2>Device action log</h2>
+          <div id="log"></div>
+          <button id="btnCopy" style="margin-top: 10px">Copy log for DX-LOG.md</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/spike/main.js"></script>
+  </body>
+</html>
