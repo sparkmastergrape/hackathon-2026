@@ -60,9 +60,20 @@ purpose:
   `inferred` visible.
 
 **No refusal is emitted here, and that is not a gap in the tool.** A refusal
-leaves no trace on a ledger, because nothing was signed and nothing was
+leaves no trace on *this* ledger, because nothing was signed and nothing was
 submitted. Refusals belong in `device-run.json`, written by a run that watched
 the device.
+
+That holds for the classic XRP Ledger and **not** for the EVM sidechain. There
+a refusal is a mined transaction: the call reverts, its effects are discarded,
+and the receipt says `status: 0`. It has a hash and a block, and the explorer
+serves it. `evm_voucher_watch.mjs` reports those, because on that chain an
+empty refusal table means none was found rather than none could be.
+
+It reports only *that* the ledger refused, never *why*. A revert reason is not
+reliably available: the explorer returns `revert_reason: null` for real reverts
+on this chain, and replaying the call at the parent block does not reproduce it,
+because the state that caused it is gone.
 
 So a first open of this pane shows settled payments, inferred approvals, and a
 line saying there are no refusals in the file. That is the honest state. The

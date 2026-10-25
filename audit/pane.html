@@ -235,6 +235,31 @@ function amountCell(e) {
   return '—';
 }
 
+/**
+ * What to say when there are no refusals, which depends on the ledger.
+ *
+ * The pane used to say flatly that "a refusal leaves no trace on a ledger".
+ * That is true of the classic XRP Ledger: a refused payment was never signed
+ * and never submitted, so there is nothing to find. It is NOT true of the EVM
+ * sidechain, where a refusal is a mined transaction with a hash and a receipt
+ * whose status is 0. Saying it of both would excuse an empty table on a chain
+ * that does record refusals, which is the one place the excuse is wrong.
+ */
+function noRefusalNote(ledgers) {
+  const kinds = new Set(ledgers.map(l => String(l.network || '').split(':')[0]));
+  const parts = ['No refusals in this file.'];
+  if (kinds.has('xrpl')) {
+    parts.push('On the XRP Ledger a refusal leaves no trace, because nothing was '
+      + 'signed and nothing submitted. Run the device proof to record one.');
+  }
+  if (kinds.has('eip155')) {
+    parts.push('On the EVM sidechain a refusal <em>does</em> leave a trace — a mined '
+      + 'transaction whose receipt status is 0 — so an empty table here means none '
+      + 'was found, not that none could be.');
+  }
+  return parts.join(' ');
+}
+
 function render(doc, sourceNote) {
   const ev = Array.isArray(doc.events) ? doc.events : [];
   const settled = ev.filter(e => e.stage === 'settle' && e.outcome === 'ok');
@@ -338,8 +363,7 @@ function render(doc, sourceNote) {
     ? `Read the actor column. ${refused.length} refusal${refused.length > 1 ? 's' : ''} in this file,
        by <span style="font-family:var(--mono);color:var(--green)">${esc(actors.join(', '))}</span>.
        The agent's own code declined nothing.`
-    : `No refusals in this file. It holds only what the ledger can evidence, and a refusal leaves no trace
-       on a ledger. Run the device proof to record one.`;
+    : noRefusalNote(ledgers);
 
   const i = document.getElementById('i-label');
   if (refused.length) {
