@@ -466,8 +466,31 @@ function normalizeStreamLog(entry) {
   };
 }
 
+/**
+ * The relay binds loopback, so the only way in from outside is the tunnel that
+ * carries QuickNode's Stream deliveries — and a tunnel has no notion of who is
+ * at the other end of it. `cf-connecting-ip` (or any forwarding header) is the
+ * proxy saying "this hop is not local", which is all this needs: the webhook is
+ * the one route meant to be reachable that way, and every other route — the
+ * pane, the SSE feed, and `/trace`, which writes to the screen — stays
+ * loopback-only. LIVE_PUBLIC=1 serves the pane through the tunnel too, as a
+ * decision rather than an oversight.
+ */
+const PUBLIC_PANE = process.env.LIVE_PUBLIC === '1';
+const throughProxy = (request) => Boolean(
+  request.headers['cf-connecting-ip']
+  || request.headers['x-forwarded-for']
+  || request.headers['x-real-ip'],
+);
+
 const server = http.createServer((request, response) => {
   const url = new URL(request.url, 'http://127.0.0.1');
+
+  if (!PUBLIC_PANE && url.pathname !== '/webhook' && throughProxy(request)) {
+    response.writeHead(403, { 'Content-Type': 'text/plain' });
+    response.end('loopback only; the tunnel carries /webhook and nothing else');
+    return;
+  }
 
   if (url.pathname === '/trace' && request.method === 'POST') { readTrace(request, response); return; }
   if (url.pathname === '/webhook' && request.method === 'POST') { readWebhook(request, response); return; }

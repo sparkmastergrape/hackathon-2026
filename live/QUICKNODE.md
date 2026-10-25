@@ -89,6 +89,16 @@ it could not parse (a non-200 makes Streams retry, and retrying an unparseable
 body just produces the same failure more often), and verifies the Stream's
 security token as an HMAC when `QUICKNODE_WEBHOOK_TOKEN` is set.
 
+**The destination is a tunnel, and `/webhook` is all of the relay it reaches.**
+The relay binds loopback; a quick tunnel (`cloudflared tunnel --url
+http://127.0.0.1:PORT`) puts a public hostname in front of it so Streams can
+deliver. Any request carrying a forwarding header gets 403 on every route but
+`/webhook`, so the pane, the SSE feed and `/trace` are not on the internet
+along with it. `LIVE_PUBLIC=1` lifts that, deliberately. The quick-tunnel
+hostname dies with the `cloudflared` process, so a restart means pasting the
+new URL into the Stream's destination — measured end to end, that is the whole
+recovery.
+
 ## What we are not claiming
 
 - **A public WebSocket does exist** at `wss://ws.testnet.xrplevm.org`, and it
@@ -98,11 +108,14 @@ security token as an HMAC when `QUICKNODE_WEBHOOK_TOKEN` is set.
 - **The 2,000-block window is conservative, not a hard ceiling.** Re-measured
   on a quiet endpoint, 10,000 answers; 20,000 still does not. The small window
   is what survived event-day load.
-- **The XRPL classic side is not on QuickNode yet.** `audit/emit_from_ledger.py`
-  and `xrpl-x402-demo/settlement_watch.py` both read `XRPL_RPC_URL` /
-  `XRPL_WSS_URL`, and both are unset, so both fall back to the public node.
-  QuickNode supports XRP Ledger Testnet; provisioning that endpoint would put
-  both ledgers behind one provider. It is a gap, and this is it stated plainly.
+- **This entry is on the XRPL EVM sidechain, and only there.** AP4M's
+  contracts live on chain 1449000, so that is where the payments and the
+  `VoucherRedeemed` events are, and all three QuickNode surfaces above point at
+  it. `audit/emit_from_ledger.py` and `xrpl-x402-demo/settlement_watch.py` can
+  read XRPL classic through `XRPL_RPC_URL` / `XRPL_WSS_URL`; both are unset and
+  stay unset. QuickNode does serve XRP Ledger Testnet, so adding it is possible
+  — it is just not part of this build, and a second endpoint nothing reads
+  would be decoration rather than use.
 
 ## Reproducing the measurements
 

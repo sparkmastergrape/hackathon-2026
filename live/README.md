@@ -72,6 +72,12 @@ which road each row came by, in its `via` field: `push`, `stream`, `poll` or
 `live/QUICKNODE.md` describes the Stream, its server-side filter, and what was
 measured against the published node.
 
+The Stream reaches `POST /webhook` through a tunnel, and that is the only route
+a tunnelled request gets: anything arriving with a forwarding header is refused
+403 elsewhere, so the pane, the SSE feed and `/trace` stay loopback-only while
+the webhook is public. `LIVE_PUBLIC=1` serves the pane through the tunnel as
+well, if that is what you want on the day.
+
 ## Two feeds, and why
 
 The chain is one feed. The agent and merchant are the other.
