@@ -8,7 +8,8 @@
     "agent": "node --env-file=.env ap4m-agent.cjs",
     "merchant": "node --env-file=.env x402-merchant.cjs",
     "x402": "node --env-file=.env x402-agent.cjs",
-    "x402:refusals": "node --env-file=.env x402-refusals.cjs"
+    "x402:refusals": "node --env-file=.env x402-refusals.cjs",
+    "x402:redeem": "node --env-file=.env x402-redeem.cjs"
   },
   "repository": {
     "type": "git",
