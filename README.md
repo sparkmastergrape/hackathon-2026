@@ -11,6 +11,12 @@ Built at the Ledger x XRPL hackathon (XRPL Commons / XRP Ledger Foundation / Swe
 New York, 24–25 October 2026), using the Mastercard AP4M payment kit on the XRPL EVM
 sidechain.
 
+**Entered under Track 02 — Agentic Finance.** The agent that reads a 402, decides to pay,
+signs and settles without a person in the path is the submission. The Ledger device gate
+and the seven filings sit underneath that entry rather than beside it: the gate is what
+makes an unattended payer safe to leave running, and the filings are the defects that
+turned up while building it. One track, one entry.
+
 Testnet only. Every key in this repository is a testnet key.
 
 ## The idea
@@ -65,7 +71,10 @@ its known limits.
 
 ### 2. `filings/` — developer-experience defects, with receipts
 
-Track 01 states that bug reports count and that DX feedback is judged as much as code.
+The Track 01 brief is where the rule is written down — bug reports count, and DX feedback
+is judged as much as code. That is not the track being entered, but it is the right
+standard, so the filings are held to it.
+
 Seven defects were found while building, each with a reproduction. Four belong to Ledger,
 three to Mastercard. The two sets do not compete for the same slot, so they are ranked
 within each sponsor rather than against each other.
@@ -86,7 +95,7 @@ with beats a better filing that needs careful handling*:
 **Two are filed upstream, against Ledger's own repository** (2026-10-25, both open):
 `03` as a documentation PR fixing the `signTransaction` derivation-path example, and `01`
 as an issue reporting that the developer portal serves XRP signer docs from before the
-2026-10-22 fix. Track 01 says bug reports and PRs count; these are that, in Ledger's
+2026-10-22 fix. Bug reports and PRs are what the brief asks for; these are that, in Ledger's
 issue tracker rather than in a slide. `filings/SUBMISSIONS.md` tracks the rest.
 
 `filings/evidence/` holds full device screen sets from Flex, Stax and Apex P (28 files),
