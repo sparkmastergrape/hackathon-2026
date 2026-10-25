@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mastercard-developers": {
+      "command": "node",
+      "args": ["server.mjs"]
+    }
+  }
+}
