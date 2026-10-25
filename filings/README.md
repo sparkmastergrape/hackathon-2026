@@ -1,6 +1,12 @@
 # Documentation filings
 
-Six defects, each with a receipt. Two sponsors. Nothing here is submitted.
+Six defects, each with a receipt. Two sponsors.
+
+**Two are filed** (2026-10-25): `03` as
+[PR #2050](https://github.com/LedgerHQ/device-sdk-ts/pull/2050), `01` as
+[issue #2051](https://github.com/LedgerHQ/device-sdk-ts/issues/2051). The PR
+commit still needs a GPG signature — see `SUBMISSIONS.md`. The other four need
+a human channel; the event page names none.
 
 Read `vi-replay/HANDOFF.md` for the state these came out of.
 
