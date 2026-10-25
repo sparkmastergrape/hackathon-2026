@@ -1,17 +1,21 @@
-// Read-only: RLUSD + XRP gas balances for agent and merchant wallets.
+// Read-only: RLUSD + XRP gas balances for the agent and merchant wallets.
+// Usage: node check-balances.mjs [address ...]
+// Any extra addresses given on the command line are reported too.
+// Reads .env from beside this script, so it works from any directory.
+// Override with ENV_PATH=<file>; override the node with RPC_URL=<url>.
 import * as fs from 'node:fs';
-import { createPublicClient, http, formatUnits, erc20Abi } from 'viem';
+import { fileURLToPath } from 'node:url';
+import { createPublicClient, http, formatUnits, erc20Abi, getAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const ENV_PATH = 'C:/Users/JD/Documents/Playground/ap4m-hackathon/.env';
+const ENV_PATH = process.env.ENV_PATH ?? fileURLToPath(new URL('.env', import.meta.url));
 const env = Object.fromEntries(
   fs.readFileSync(ENV_PATH, 'utf8').split('\n').filter(l => l.includes('=') && !l.trim().startsWith('#'))
     .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^"|"$/g, '')]; })
 );
 
-const RPC = 'https://rpc.testnet.xrplevm.org';
+const RPC = process.env.RPC_URL ?? 'https://rpc.testnet.xrplevm.org';
 const RLUSD = '0x27b57a9D0b8d24EB97259c4E2279e45255e016f3';
-const RECIPIENT = '0x139E4d70f435d8c2d17400566DB8cB0d7483bf30';
 const chain = {
   id: 1449000, name: 'XRPL EVM Testnet',
   nativeCurrency: { name: 'XRP', symbol: 'XRP', decimals: 18 },
@@ -29,7 +33,8 @@ console.log('');
 
 const agent = privateKeyToAccount(env.AGENT_PRIVATE_KEY);
 const merchant = privateKeyToAccount(env.MERCHANT_PRIVATE_KEY);
-const wallets = [['agent   ', agent.address], ['merchant', merchant.address], ['sathya  ', RECIPIENT]];
+const extra = process.argv.slice(2).map((a, i) => [`extra ${i + 1} `, getAddress(a)]);
+const wallets = [['agent   ', agent.address], ['merchant', merchant.address], ...extra];
 
 for (const [label, addr] of wallets) {
   const [bal, gas] = await Promise.all([
