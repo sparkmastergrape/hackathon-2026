@@ -6,9 +6,9 @@ Format per entry: what I expected → what happened → exact doc URL → screen
 
 ---
 
-## Summary — 33 findings, and the six worth your time
+## Summary — 34 findings, and the six worth your time
 
-Written during the build, not reconstructed after it. Of 33 entries: **29 confirmed**
+Written during the build, not reconstructed after it. Of 34 entries: **30 confirmed**
 against a live page, a shipped package, a device or the chain — one of those
 (D-030) being our own design rather than anyone's bug; 2 confirmed in the type
 definitions with runtime behaviour unverified; 1 a capability gap that is by
@@ -39,16 +39,19 @@ written, with the wrong story attached to it. It is in here because the point of
 a DX log is what the building taught you, not who is to blame.
 
 By surface: **Ledger docs, SDK, app-ethereum and Speculos — 18** (D-001, D-003–D-016,
-D-026–D-028); **AP4M SDK and service — 11** (D-018–D-025, D-031–D-033); **both
+D-026–D-028); **AP4M SDK and service — 12** (D-018–D-025, D-031–D-034); **both
 sponsors' docs together — 1** (D-017, the chain-ID conflict, and the one that would
 have silently broken every signature); **tooling — 1** (D-029); **ours — 1**
 (D-030); **retracted — 1** (D-002).
 
-The last three (D-031–D-033) came out of one hour spent trying to open a fresh
+The last four (D-031–D-034) came out of one hour spent trying to open a fresh
 channel for the demo, and they are the most operationally expensive findings in
 the log: a binding limit discovered after spending gas, a single-writer
-constraint that presents as a flaky RPC, and a lock file that turns one crash
-into every later run failing. None of them is in any document.
+constraint that presents as a flaky RPC, a lock file that turns one crash into
+every later run failing, and a retained payment that makes the damage permanent.
+None of them is in any document, and together they are a compounding failure: one
+undocumented race leaves a merchant that no longer works and cannot be fixed by
+restarting it.
 
 ---
 
@@ -321,6 +324,15 @@ const maximum  = expected + BigInt(accepted.amount);               // what gets 
 **Fix:** release the lock on process exit (`process.on("exit")`), or record the owning pid in the lock and ignore a lock whose process is gone.
 **Fix on our side:** `gate-c` now releases the merchant on `uncaughtException`, `unhandledRejection`, `SIGINT` and `SIGTERM`, not only on the happy path.
 **Status:** confirmed 2026-10-25 · not filed — small, self-contained PR to `ap4m-x402.mjs`
+
+### D-034 · A lost voucher race retains the payment forever, so one race poisons the merchant's state directory permanently
+**Observed:** after the reverted redemption in D-032, the merchant stopped issuing challenges altogether. Every later request — with the concurrent writer gone, the channel quiet, and a fresh mandate — answered **HTTP 409 `{"error":"retry_retained_payment"}`** with no `PAYMENT-REQUIRED` header. The merchant had persisted the losing payment in `merchant.sqlite` and wanted that exact payment retried.
+
+It cannot be retried. The retained voucher is for cumulative 0.294744 on a channel whose redeemed figure had moved to 0.584256, and a voucher below the redeemed total can never be accepted. So the merchant is wedged on a payment that is unsatisfiable by construction, and `retrySamePayment: true` (D-032) is the advice that puts it there.
+**Recovery:** none from the client side. We pointed the merchant at a new `--state` directory, which worked immediately — three payments, blocks 9231696–9231698, cumulative 0.594256 → 0.614256. The old `merchant.sqlite` is still wedged and we left it alone, since the vendor's own message says never to delete it.
+**Why it matters:** this is the compounding failure. One concurrent-writer race, which is itself undocumented and looks like a flaky RPC, leaves the merchant's state directory permanently unusable — and the symptom (409 on every request) looks nothing like its cause. On a demo machine the merchant simply stops working and no amount of restarting helps.
+**Fix:** a retained payment should expire, or be invalidated when the channel's redeemed total passes it. Minimally: say in the 409 what is retained and that a stale retention needs a new state directory.
+**Status:** confirmed live 2026-10-25, with the recovery verified on chain · not filed — **file this with D-032; they are one bug with two faces**
 
 ---
 

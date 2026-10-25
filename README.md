@@ -60,10 +60,22 @@ XRPL EVM Testnet, **chain 1449000**. RLUSD `0x27b57a9D0b8d24EB97259c4E2279e45255
 >   mentions neither the total nor the cause (DX-LOG D-032). We watched a second
 >   process drain 0.21 RLUSD in three minutes while our own calls failed.
 >
+> - **A lost race wedges the merchant permanently.** It retains the losing
+>   payment in `merchant.sqlite` and answers HTTP 409 `retry_retained_payment`
+>   to everything afterwards — for a voucher that can never be accepted again
+>   (DX-LOG D-034). The recovery is a new `--state` directory.
+>
 > So `npm run channels` lists every channel with its on-chain headroom, and both
 > runners now pick the roomiest open channel rather than the first one listed,
 > sample `redeemed` twice before starting, and refuse a run that cannot finish.
-> Before any live demo: `npm run channels`, and make sure nothing else is paying.
+>
+> **Demo channel as of this commit:** `0xba86e459…`, **0.385744 RLUSD — 38 calls**
+> of headroom, and quiet. Proven after the fix with three more payments
+> ([9231696](https://explorer.testnet.xrplevm.org/tx/0x8ac7eefe9c6dca2d16f8da8e4497bb8427b3f53157e6db24dbb98c063c2053db),
+> [9231697](https://explorer.testnet.xrplevm.org/tx/0xcda328dacaba4ea4079ab4da124ca0cf0d090585966421343fd93f82de46606d),
+> [9231698](https://explorer.testnet.xrplevm.org/tx/0x1b969cf49f0aab0f7d51729abc1fed4aa9f3c44a16f56ac0e67da0e4f01f3f8a)),
+> which `npm run verify-claims` checks along with the rest. Before any live run:
+> `npm run channels`, and make sure nothing else is paying.
 
 ---
 
@@ -186,7 +198,7 @@ the wrong chain. (DX-LOG D-017)
 | [`src/device/`](src/device/) | a Ledger wrapped as an approver (Speculos or hardware) |
 | [`contracts/MandateRegistry.sol`](contracts/MandateRegistry.sol) | 135 lines (81 of them code), no owner, no admin, no unrevoke |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | design, data structures, threat model (§7) and the boundary (§7.1) |
-| [`docs/DX-LOG.md`](docs/DX-LOG.md) | 33 developer-experience findings, captured at the moment of friction — one of them retracted on re-check |
+| [`docs/DX-LOG.md`](docs/DX-LOG.md) | 34 developer-experience findings, captured at the moment of friction — one of them retracted on re-check |
 | [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) | the plan, with each gate's result recorded as it passed |
 
 The first five modules are pure: no keys, no device, no network, no model.

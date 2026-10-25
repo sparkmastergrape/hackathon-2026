@@ -35,6 +35,11 @@ export const CLAIMS = [
   { gate: "D", label: "device-mandated 1 of 3", tx: "0x884f69d6b1acfcac2ce1ab9e5935bc6c84e9c0e07dd55de624e47876d94303c7", block: 9228798, cumulative: "0.22" },
   { gate: "D", label: "device-mandated 2 of 3", tx: "0xbdfa0d01f731c402509d8528dad88e814b824d31cb1bc2000ba614471e7001e1", block: 9228799, cumulative: "0.23" },
   { gate: "D", label: "device-mandated 3 of 3", tx: "0xe4c9e62c60850cbe04719a07b860f87677d393bb2dd5b578167ef2a9062663d3", block: 9228800, cumulative: "0.24" },
+  // After the single-writer fix: the same path, on the channel the chooser
+  // picked by headroom, with the concurrent payer stopped (DX-LOG D-031–D-034).
+  { gate: "fix", label: "post-fix 1 of 3", tx: "0x8ac7eefe9c6dca2d16f8da8e4497bb8427b3f53157e6db24dbb98c063c2053db", block: 9231696, cumulative: "0.594256", channel: "0xba86e45959af3fb932f551c62f43542b3fd80a2f99d45ceca4386920d0363dd0" },
+  { gate: "fix", label: "post-fix 2 of 3", tx: "0xcda328dacaba4ea4079ab4da124ca0cf0d090585966421343fd93f82de46606d", block: 9231697, cumulative: "0.604256", channel: "0xba86e45959af3fb932f551c62f43542b3fd80a2f99d45ceca4386920d0363dd0" },
+  { gate: "fix", label: "post-fix 3 of 3", tx: "0x1b969cf49f0aab0f7d51729abc1fed4aa9f3c44a16f56ac0e67da0e4f01f3f8a", block: 9231698, cumulative: "0.614256", channel: "0xba86e45959af3fb932f551c62f43542b3fd80a2f99d45ceca4386920d0363dd0" },
 ];
 
 /** Not payments: a deployment and a stop order. Verified differently. */
@@ -43,10 +48,19 @@ export const REGISTRY_CLAIMS = [
   { label: "device-signed revocation, agent-relayed", tx: "0xb9f9864187a808147c50ecbfb9ba4cb96a03e7ad4bd937f5bc9c993db29db27e", block: 9229163 },
 ];
 
+/** The channel the gate runs settled on, and the default for a claim. */
 export const CHANNEL_ID = "0x6d824358aa10ae33fb4ccf7deaab5e54147d4682963faeb4334518f2e26f320b";
 
-/** The high-water mark our own runs took the channel to. */
-const OUR_HIGH_WATER = CLAIMS.at(-1).cumulative;
+/** Every channel a claim refers to, in the order they are first used. */
+const CHANNELS = [...new Set(CLAIMS.map((c) => c.channel ?? CHANNEL_ID))];
+
+/** The high-water mark our runs took each channel to. */
+const HIGH_WATER = new Map(
+  CHANNELS.map((id) => [
+    id,
+    CLAIMS.filter((c) => (c.channel ?? CHANNEL_ID) === id).at(-1).cumulative,
+  ]),
+);
 
 // As published by the kit; index 7 is capacity, 8 is redeemed, 9 the payer.
 const CHANNELS_ABI = [
@@ -76,8 +90,12 @@ console.log(`\nRPC ${RPC_URL}`);
 console.log(`chainId ${net.chainId} (expected ${CHAIN_ID}), head ${await provider.getBlockNumber()}`);
 if (Number(net.chainId) !== CHAIN_ID) fail(`wrong chain: ${net.chainId} != ${CHAIN_ID}`);
 
-const channel = await new Contract(PAYMENT_LEDGER, CHANNELS_ABI, provider).channels(CHANNEL_ID);
-const [capacity, redeemed, payer, merchant] = [channel[7], channel[8], channel[9], channel[12]];
+const ledgerContract = new Contract(PAYMENT_LEDGER, CHANNELS_ABI, provider);
+const state = new Map();
+for (const id of CHANNELS) {
+  const s = await ledgerContract.channels(id);
+  state.set(id, { capacity: s[7], redeemed: s[8], payer: s[9], merchant: s[12] });
+}
 
 console.log(`\nPayments — receipt, then voucher signature recovered from the calldata`);
 for (const claim of CLAIMS) {
@@ -99,7 +117,9 @@ for (const claim of CLAIMS) {
     ["bytes32", "uint256", "bytes"],
     `0x${tx.data.slice(10)}`,
   );
-  if (onChainChannel !== CHANNEL_ID) fail(`${claim.label}: settled on a different channel`);
+  const expectedChannel = claim.channel ?? CHANNEL_ID;
+  if (onChainChannel !== expectedChannel)
+    fail(`${claim.label}: settled on ${onChainChannel}, expected ${expectedChannel}`);
   if (cumulative !== units(claim.cumulative))
     fail(`${claim.label}: voucher says ${rlusd(cumulative)}, README says ${claim.cumulative}`);
 
@@ -113,8 +133,9 @@ for (const claim of CLAIMS) {
   } catch (e) {
     fail(`${claim.label}: voucher signature does not recover (${e.message})`);
   }
-  if (signer && signer.toLowerCase() !== payer.toLowerCase())
-    fail(`${claim.label}: voucher signed by ${signer}, channel payer is ${payer}`);
+  const channelPayer = state.get(expectedChannel)?.payer;
+  if (signer && channelPayer && signer.toLowerCase() !== channelPayer.toLowerCase())
+    fail(`${claim.label}: voucher signed by ${signer}, channel payer is ${channelPayer}`);
 
   console.log(
     `  gate ${claim.gate}  ${claim.label.padEnd(22)} block ${receipt.blockNumber}  ` +
@@ -122,27 +143,33 @@ for (const claim of CLAIMS) {
   );
 }
 
-console.log(`\nChannel, read from the PaymentLedger contract`);
-console.log(`  channel   ${CHANNEL_ID}`);
-console.log(`  payer     ${payer}   (the agent's software key — it signs vouchers)`);
-console.log(`  merchant  ${merchant}`);
-console.log(`  capacity  ${rlusd(capacity)}   <- the only ceiling no signature can lift`);
-console.log(`  redeemed  ${rlusd(redeemed)}`);
-if (redeemed < units(OUR_HIGH_WATER))
-  fail(`redeemed is below ${OUR_HIGH_WATER} RLUSD — our own payments are missing`);
-if (redeemed > capacity) fail(`redeemed exceeds capacity, which the contract should forbid`);
+console.log(`\nChannels, read from the PaymentLedger contract`);
+for (const id of CHANNELS) {
+  const { capacity, redeemed, payer, merchant } = state.get(id);
+  const high = HIGH_WATER.get(id);
+  console.log(`  channel   ${id}`);
+  console.log(`  payer     ${payer}   (the agent's software key — it signs vouchers)`);
+  console.log(`  merchant  ${merchant}`);
+  console.log(`  capacity  ${rlusd(capacity)}   <- the only ceiling no signature can lift`);
+  console.log(`  redeemed  ${rlusd(redeemed)}`);
+  if (redeemed < units(high))
+    fail(`${id}: redeemed is below ${high} RLUSD — our own payments are missing`);
+  if (redeemed > capacity) fail(`${id}: redeemed exceeds capacity, which the contract forbids`);
 
-// The channel is long-lived and later runs keep spending it, so the headroom is
-// an operational fact worth printing rather than an assertion worth making:
-// when it reaches zero, payments stop on stage, and that is the cap working.
-const headroom = capacity - redeemed;
-const callsLeft = headroom / units("0.01");
-console.log(`  headroom  ${rlusd(headroom)}  ≈ ${callsLeft} more payments at 0.01 RLUSD`);
-if (callsLeft < 5n)
-  console.log(
-    `   ** WARNING: fewer than 5 demo payments left on this channel. Open or top up\n` +
-      `      a channel before demoing live, or the cap will stop the demo — correctly.`,
-  );
+  // Channels are long-lived and later runs keep spending them, so headroom is an
+  // operational fact worth printing rather than an assertion worth making: when
+  // it reaches zero, payments stop on stage, and that is the cap working.
+  const headroom = capacity - redeemed;
+  const callsLeft = headroom / units("0.01");
+  console.log(`  headroom  ${rlusd(headroom)}  ≈ ${callsLeft} more payments at 0.01 RLUSD`);
+  if (callsLeft < 5n)
+    console.log(
+      `   ** fewer than 5 payments left here. \`npm run channels\` lists them all;\n` +
+        `      the runners pick the roomiest open one, and a new channel may be\n` +
+        `      refused with PayoutBindingLimitExceeded (DX-LOG D-031).`,
+    );
+  console.log();
+}
 
 console.log(`\nRegistry`);
 if (!MANDATE_REGISTRY) fail("MANDATE_REGISTRY is not set in src/config/network.js");
