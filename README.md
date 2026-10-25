@@ -4,7 +4,8 @@ An agent that meets an HTTP 402, decides to pay, signs the voucher and settles R
 the merchant — with no human in the loop. Payments that cross a risk boundary are the
 exception: those alone stop and wait for a signature on a Ledger device.
 
-Plus six documented defects found in the sponsors' own SDKs and docs while building it.
+Plus seven documented defects found in the sponsors' own SDKs and docs while building it,
+two of them already filed upstream against Ledger's SDK.
 
 Built at the Ledger x XRPL hackathon (XRPL Commons / XRP Ledger Foundation / Swell,
 New York, 24–25 October 2026), using the Mastercard AP4M payment kit on the XRPL EVM
@@ -65,8 +66,8 @@ its known limits.
 ### 2. `filings/` — developer-experience defects, with receipts
 
 Track 01 states that bug reports count and that DX feedback is judged as much as code.
-Six defects were found while building, each with a reproduction. Four belong to Ledger,
-two to Mastercard. The two sets do not compete for the same slot, so they are ranked
+Seven defects were found while building, each with a reproduction. Four belong to Ledger,
+three to Mastercard. The two sets do not compete for the same slot, so they are ranked
 within each sponsor rather than against each other.
 
 Submission order, strongest first — the ranking rule is that *a filing nobody can argue
@@ -80,6 +81,7 @@ with beats a better filing that needs careful handling*:
 | 4 | [`04-clear-signing-payment.md`](filings/04-clear-signing-payment.md) | Ledger | drafted | Worth the most, needs the most care. Scoped to `Payment`. Carries screen sets from three devices. |
 | 5 | [`05-ap4m-dead-faucet.md`](filings/05-ap4m-dead-faucet.md) | Mastercard / AP4M | drafted | A served config value pointing at a host with no DNS records. One DNS lookup demonstrates it. |
 | 6 | [`06-two-judging-rubrics.md`](filings/06-two-judging-rubrics.md) | Mastercard / AP4M | drafted | The integration guide and the workshop deck each self-describe as the judging criteria and score different things. |
+| 7 | [`07-paymentledger-unverified.md`](filings/07-paymentledger-unverified.md) | Mastercard / AP4M | drafted | The On-chain proof criterion sends judges to an explorer that cannot name the event. All four AP4M contracts are unverified. |
 
 **Two are filed upstream, against Ledger's own repository** (2026-10-25, both open):
 `03` as a documentation PR fixing the `signTransaction` derivation-path example, and `01`
@@ -127,7 +129,7 @@ exercised all four policy outcomes and landed two real transactions. Hashes belo
 substitutes a software key for the device, and the device leg has otherwise only been
 exercised on Speculos. The gate has no authentication and keeps state in memory.
 Non-`Payment` transaction types show a "no preview yet" notice and need the device's
-blind-signing setting. Four of the six filings are drafted but not yet sent; the other
+blind-signing setting. Five of the seven filings are drafted but not yet sent; the other
 two are filed and open upstream, linked in the table above.
 
 ## Transactions
@@ -313,7 +315,7 @@ that last case.
 | Path | What it is |
 |---|---|
 | `ledger-approver/` | Policy engine, gate service, React approver app, tests |
-| `filings/` | Six DX defect filings and device evidence |
+| `filings/` | Seven DX defect filings and device evidence |
 | `vi-replay/` | Verifiable-intent replay fixtures and the audit validator |
 | `context-workspace/` | The staged pipeline the filings were produced through |
 | `ap4m-agent.cjs`, `run-ap4m.cjs`, `close-channel.cjs` | The AP4M payment agent and its runner |

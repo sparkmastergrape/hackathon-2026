@@ -1,6 +1,7 @@
 # Documentation filings
 
-Six defects, each with a receipt. Two sponsors. Nothing here is submitted.
+Seven defects, each with a receipt. Two sponsors. Two are filed upstream; the other five
+are drafted and unsent. `SUBMISSIONS.md` tracks the state of each.
 
 Read `vi-replay/HANDOFF.md` for the state these came out of.
 
@@ -17,6 +18,7 @@ careful handling.
 | 4 | `04-clear-signing-payment.md` | Ledger, Track 01 | Worth the most, needs the most care. Scope to `Payment` or it is refused. Carries full screen sets from three devices in `evidence/`. |
 | 5 | `05-ap4m-dead-faucet.md` | Mastercard, AP4M | Clean and separate. Does not compete with the Ledger set. |
 | 6 | `06-two-judging-rubrics.md` | Mastercard, AP4M | Two surfaces that each self-describe as the judging criteria and score different things. Scoped so neither is called wrong. |
+| 7 | `07-paymentledger-unverified.md` | Mastercard, AP4M | The On-chain proof criterion sends judges to an explorer that cannot name the event. Concedes that the adjacent RLUSD criterion still works. |
 
 ## The order changed while drafting, and the reason matters
 
