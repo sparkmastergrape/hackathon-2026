@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "agent": "node --env-file=.env ap4m-agent.cjs"
+    "agent": "node --env-file=.env ap4m-agent.cjs",
+    "merchant": "node --env-file=.env x402-merchant.cjs",
+    "x402": "node --env-file=.env x402-agent.cjs",
+    "x402:refusals": "node --env-file=.env x402-refusals.cjs"
   },
   "repository": {
     "type": "git",
