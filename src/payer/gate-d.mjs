@@ -17,7 +17,7 @@
 //
 // Prereq either way: npm run speculos:up
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { formatUnits } from "ethers";
 
 import { buildMandate, rlusd, toSignerPayload, hashMandate, verifyMandate, describeMandate } from "../mandate/index.js";
@@ -26,11 +26,16 @@ import { SpendLedger } from "../ledger-spend/index.js";
 import { createPayer, PAID, REQUIRES_CONFIRMATION, REFUSED } from "./index.js";
 import { createMockMerchant, DEFAULT_CHANNEL_ID } from "./mock-merchant.mjs";
 import { connectSpeculosApprover } from "../device/speculos-approver.mjs";
-import { RLUSD, PAYMENT_LEDGER, RLUSD_DECIMALS } from "../config/network.js";
+import { RLUSD, PAYMENT_LEDGER, RLUSD_DECIMALS, MANDATE_REGISTRY } from "../config/network.js";
+import { createOnChainChecker, REGISTRY_ABI } from "../revocation/index.js";
+import { buildReceiptChain } from "../receipts/index.js";
+import { renderReceiptsHtml } from "../receipts/render.js";
 
 const args = process.argv.slice(2);
 const LIVE = args.includes("--live");
-const REGISTRY = "0x0000000000000000000000000000000000000001";
+// The real, deployed registry — so Mandates and Grants bind to the contract
+// that can actually revoke them, not to a placeholder address.
+const REGISTRY = MANDATE_REGISTRY || "0x0000000000000000000000000000000000000001";
 const PRICE = rlusd("0.01");
 const OVER_CAP = rlusd("0.2");
 const argOf = (name, fallback) => {
@@ -64,7 +69,7 @@ const approver = await connectSpeculosApprover({
 log(`device address: ${approver.address}`);
 
 // ---------------------------------------------------------------- the merchant
-let merchant, resourceUrl, channelId, channelCap, agentSigner, ledgerSeed = 0n;
+let merchant, resourceUrl, channelId, channelCap, agentSigner, ledgerSeed = 0n, provider = null;
 
 if (LIVE) {
   const KIT = "C:/Users/JD/Documents/Playground/ap4m-hackathon";
@@ -77,7 +82,7 @@ if (LIVE) {
     const m = line.match(/^([A-Z_0-9]+)=(.*)$/);
     if (m) env[m[1]] = m[2].replace(/^"|"$/g, "");
   }
-  const provider = new JsonRpcProvider(RPC_URL);
+  provider = new JsonRpcProvider(RPC_URL);
   agentSigner = new Wallet(env.AGENT_PRIVATE_KEY, provider);
 
   const ch = await fetch(`${AP4M_API_URL}/public/participant/challenge`, {
@@ -194,6 +199,16 @@ try {
   head(`2. AUTONOMY — ${UNATTENDED_CALLS} payments, nobody touching anything`);
   const ledger = new SpendLedger();
   if (ledgerSeed) ledger.seedChannel(channelId, ledgerSeed);
+  // Revocation is read from the deployed registry, and FAILS CLOSED: if the
+  // chain cannot be reached, the agent stops rather than assuming it is still
+  // allowed to spend. Only wired in the live run, because that is the only one
+  // with an RPC — and a mock run must not pretend to have checked.
+  const revocation =
+    LIVE && MANDATE_REGISTRY
+      ? createOnChainChecker({ provider, registry: MANDATE_REGISTRY, approver: approver.address })
+      : null;
+  if (revocation) log(`revocation registry ${MANDATE_REGISTRY} (fail-closed)`);
+
   const payer = createPayer({
     mandate,
     signatureValid: mv.ok,
@@ -201,6 +216,7 @@ try {
     channelId,
     channelCap,
     signer: agentSigner,
+    revocation,
     policy: { expectedLedger: PAYMENT_LEDGER, expectedResourceUrl: resourceUrl },
   });
 
@@ -242,6 +258,7 @@ try {
     const gv = await verifyGrant(grant, grantSignature, approver.address);
     result.screens.grant = grantScreens;
     result.grantId = hashGrant(grant);
+    result.grantObject = grant; // for the receipt chain below
     result.grantSignedByDevice = gv.ok;
     log(`grant ${hashGrant(grant)}`);
     log(`signature recovers to the device: ${gv.ok}`);
@@ -301,6 +318,110 @@ try {
     result.brake = "passed";
   }
 
+  // ------------------------------------------------- 8. revocation (live only)
+  if (args.includes("--revoke")) {
+    head("8. THE BRAKE OF LAST RESORT — revoke on the device");
+    if (!LIVE || !MANDATE_REGISTRY) {
+      log("skipped: revocation is read from the chain, so it needs --live and a deployed registry");
+      result.revocation = "skipped";
+    } else {
+      const { Contract } = await import("ethers");
+      const registry = new Contract(MANDATE_REGISTRY, REGISTRY_ABI, agentSigner);
+      const nonce = BigInt(Math.floor(Date.now() / 1000));
+
+      // Check the digest before spending a human's attention on a prompt that
+      // could never verify on chain.
+      const { hashTypedData } = await import("viem");
+      const { REVOCATION_EIP712 } = await import("../config/network.js");
+      const typed = {
+        domain: {
+          name: REVOCATION_EIP712.domainName,
+          version: REVOCATION_EIP712.domainVersion,
+          chainId: (await provider.getNetwork()).chainId,
+          verifyingContract: MANDATE_REGISTRY,
+        },
+        types: REVOCATION_EIP712.types,
+        primaryType: "Revocation",
+        message: { mandateId, approver: approver.address, nonce },
+      };
+      const onChainDigest = await registry.revocationDigest(mandateId, approver.address, nonce);
+      if (onChainDigest.toLowerCase() !== hashTypedData(typed).toLowerCase())
+        throw new Error("revocation digest disagrees with the contract — not asking the device");
+      log(`digest matches the contract's own revocationDigest`);
+
+      const revScreens = [];
+      const stop = approver.captureScreens((s) => {
+        revScreens.push(s);
+        device(s);
+      });
+      const sig = await approver.signTypedData({
+        ...typed,
+        message: { ...typed.message, nonce: nonce.toString() },
+      });
+      stop();
+      result.screens.revocation = revScreens;
+
+      // The AGENT relays it: it pays to have its own authority removed, and
+      // cannot refuse — the registry checks the signature, not the sender.
+      const tx = await registry.revoke(mandateId, approver.address, nonce, sig);
+      log(`relayed by the agent: ${tx.hash}`);
+      const rcpt = await tx.wait();
+      log(`mined block ${rcpt.blockNumber}, status ${rcpt.status}`);
+      const confirmed = await registry.isRevoked(approver.address, mandateId);
+      log(`registry says revoked: ${confirmed}`);
+      if (!confirmed) throw new Error("the revocation did not land in the registry");
+
+      const after = await payer.buy(resourceUrl);
+      log(`next payment -> ${after.outcome}: ${after.message}`);
+      if (after.outcome !== REFUSED) throw new Error("a revoked mandate still paid");
+
+      result.revocation = {
+        tx: tx.hash,
+        block: rcpt.blockNumber,
+        confirmedOnChain: confirmed,
+        nextPayment: { outcome: after.outcome, code: after.verdict?.code },
+      };
+    }
+  }
+
+  // ------------------------------------------------- the receipt chain view
+  const paidEvents = payer.audit.filter((e) => e.outcome === PAID && !e.free);
+  const receipts = [];
+  for (const [i, e] of paidEvents.entries()) {
+    // On chain, read the receipt back. Off chain, pass nothing — the view then
+    // marks settlement unverified rather than dressing up a merchant's word.
+    let onChain = null;
+    if (LIVE && e.txHash) {
+      const rcpt = await provider.getTransactionReceipt(e.txHash);
+      onChain = { receipt: rcpt, channelRedeemed: e.cumulativeAmount };
+    }
+    receipts.push({
+      title: `Payment ${i + 1} — ${rl(e.amount)}${e.verdict?.code === "WITHIN_GRANT" ? " (granted)" : ""}`,
+      chain: await buildReceiptChain({
+        event: e,
+        mandate,
+        mandateSignature,
+        approver: approver.address,
+        grant: e.verdict?.code === "WITHIN_GRANT" ? result.grantObject : null,
+        onChain,
+      }),
+    });
+  }
+  const out = argOf("receipts", "build/receipts.html");
+  writeFileSync(
+    out,
+    renderReceiptsHtml(receipts, {
+      run: LIVE ? "live — real RLUSD on chain 1449000" : "mock — no funds moved",
+      mandate: mandateId,
+      approver: `${approver.address} (Ledger, app-ethereum via Speculos)`,
+      registry: MANDATE_REGISTRY || "(not deployed)",
+      payments: String(receipts.length),
+    }),
+  );
+  result.receiptsHtml = out;
+  result.receiptsVerified = receipts.filter((r) => r.chain.verified).length;
+  console.log(`\nreceipt chain view -> ${out} (${result.receiptsVerified}/${receipts.length} fully verified)`);
+
   result.stats = JSON.parse(
     JSON.stringify(payer.stats(), (_, v) => (typeof v === "bigint" ? v.toString() : v)),
   );
@@ -309,8 +430,18 @@ try {
   result.gateD = "FAILED";
   result.error = e.message;
   if (e.detail) result.errorDetail = JSON.stringify(e.detail);
+  if (e.screenAtFailure) {
+    result.screenAtFailure = e.screenAtFailure;
+    result.wantedInteraction = e.wantedInteraction;
+    result.stepsAtFailure = e.stepsSeen;
+  }
   head("FAILED");
   log(e.message);
+  if (e.screenAtFailure) {
+    log(`device screen at failure: ${e.screenAtFailure}`);
+    log(`signer asked for interaction: ${e.wantedInteraction}`);
+    log(`steps: ${(e.stepsSeen ?? []).join(", ")}`);
+  }
   if (e.detail) log(JSON.stringify(e.detail, null, 2));
 } finally {
   await merchant.close().catch?.(() => {});

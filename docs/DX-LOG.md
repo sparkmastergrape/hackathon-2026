@@ -216,6 +216,19 @@ const maximum  = expected + BigInt(accepted.amount);               // what gets 
 **Fix:** downgrade the message to debug when the fallback succeeds, or let the caller declare "unregistered, do not look" and skip the lookups. Either would make the first-run experience markedly less alarming.
 **Status:** confirmed, benign · not filed
 
+### D-028 · A device screen gives no way to tell a data field from a prompt
+**What happened:** our Speculos driver decided "is this screen asking me to approve?" by testing the screen text for `/approve|accept|confirm|…/`. That worked for a dozen runs — until a struct appeared with a field named **`approver`**. The label contains "approve", so a data screen was read as an approval button, two-button press meant *skip the message* rather than *yes*, and the review stalled until the signer timed out 120 seconds later.
+**Why it is a DX finding and not just our bug:** `/events` returns rendered text and nothing else. There is no screen *kind*, no "this is a confirmation" flag, no distinction between a field being displayed and a decision being requested. Every automated test harness for a Ledger app must therefore guess from text, and every such guess is one unlucky field name away from being wrong — silently, and in the direction of pressing buttons the human did not intend.
+**Our fix:** `name | value` is a field screen and is never a confirmation; the device's own prompts are matched anchored to the start of the screen; the blind-signing warning is handled explicitly. Also, the screen at the moment of failure is now attached to the error, because the symptom (a 120s timeout) was nowhere near the cause.
+**Fix (suggestion for Speculos):** add a screen kind or a "waiting for user decision" flag to the `/events` payload. It costs little and removes an entire class of silent misdrive from everyone's test harness.
+**Status:** confirmed, cost ~40 min · not filed
+
+### D-029 · `--test-force-exit` trips a libuv assertion on Windows
+**Observed:** `node --test --test-force-exit` on a suite that opens and closes HTTP servers prints `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76` and marks the FILE as failed — after every test in it has passed. Without the flag the same suite exits cleanly.
+**Why it matters:** the failure is reported against the test file with no diagnostic, so it reads as "your tests are broken" when they are green. We nearly went looking for a bug in the code under test.
+**Fix:** we dropped the flag; it was only there as insurance against a hung handle, and the suite does not need it. Worth a note in the Node test-runner docs that the flag can race handle teardown on Windows.
+**Status:** confirmed on Node 24.14.0, Windows 11 · not filed
+
 ---
 
 ## Live entries

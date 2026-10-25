@@ -36,8 +36,11 @@ Outputs: 5 DX findings (DX-LOG D-009…D-013), two of them PR-worthy.
 6. ~~End-to-end: many auto-paid calls, then one that escalates and blocks for the device~~ ✅ `npm run gate-d` (Gate D below). A graphical approver UI is still only a terminal; the device screens are the interface that matters and they are captured verbatim.
 
 ### Tier 2 — Should ship (materially raises the score)
-7. Revocation registry contract + device-signed revoke, with the Guard failing closed.
-8. Receipt chain view: trace → invoice → tx hash → mandate → signature.
+7. ~~Revocation registry contract + device-signed revoke, with the Guard failing closed~~ ✅ `contracts/MandateRegistry.sol`, deployed to **`0x7B68a815682C0e7098D5cc604A18638077200a49`** (tx `0xc9282ecc…`, block 9229025, solc 0.8.28, 2,208 bytes, no owner and no admin function).
+   Revocation is keyed by `(approver, mandateId)`, so the registry needs no notion of ownership and nobody can revoke anybody else's mandate. It is monotonic — there is no `unrevoke`, because a brake you can release remotely is a brake an attacker can release. The human signs, **anyone** relays: in the demo the agent's own wallet pays to have its authority removed, and cannot refuse.
+   **Failing closed is the real work** (`src/revocation`): "I could not read the registry" stops the agent exactly as "revoked" does, and the two report different codes so a human can tell them apart. Nine tests cover the outage paths, including the deliberate `allowStaleWhenOffline` escape hatch that a deployment must write down to get.
+8. ~~Receipt chain view~~ ✅ `src/receipts` → `build/receipts.html`, a single file with no build step and no CDN.
+   Each link says **verified** only when it was checked — a signature recovered, a digest recomputed, a receipt read — and renders differently when it was not. A merchant's settlement header without a transaction receipt shows as *unverified: the merchant's claim, not proof*.
 9. Prompt-injection demo scene: the attack that fails.
 10. ~~Library packaging + README~~ ✅ `src/README.md` (Tier 2 item pulled forward)
 
@@ -122,6 +125,8 @@ Approver UI: mandate issuance on device, escalation resolution on device. Agent 
 
 ### H+20 → H+26 · Tier 2
 Revocation contract + device-signed revoke (this is also the clean on-chain-transaction proof). Receipt chain view. Injection scene. Library README.
+
+**Tier 2 end-to-end, on chain** (`npm run gate-d -- --live --revoke`): device signs the Mandate → two RLUSD payments settle → the device signs a **Revocation** → the agent relays it (`0xb9f9864187a808147c50ecbfb9ba4cb96a03e7ad4bd937f5bc9c993db29db27e`, block 9229163) → `isRevoked` reads back `true` with a `Revoked` event naming approver, mandate and relayer → **the next payment is refused before the merchant is even asked for a quote**. Receipt view: 2/2 links fully verified.
 
 > **GATE E (H+26).** Feature freeze. Whatever is not working now is cut, not fixed.
 

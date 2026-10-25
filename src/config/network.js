@@ -65,3 +65,22 @@ export const VOUCHER_EIP712 = {
     ],
   },
 };
+
+// Our own MandateRegistry (contracts/MandateRegistry.sol): on-chain revocation,
+// and the EIP-712 `verifyingContract` for both Mandates and Revocations.
+// Deployed 2026-10-25, tx 0xc9282ecc5288fd2406128827c573c4bb691ea1c74cefeb49b2d5af5f71a07d82
+// (block 9229025). Its on-chain `revocationDigest` was checked against the
+// locally computed EIP-712 digest at deploy time and agreed.
+export const MANDATE_REGISTRY = "0x7B68a815682C0e7098D5cc604A18638077200a49";
+
+export const REVOCATION_EIP712 = {
+  domainName: "AgentSpendMandateRegistry",
+  domainVersion: "1",
+  types: {
+    Revocation: [
+      { name: "mandateId", type: "bytes32" },
+      { name: "approver", type: "address" },
+      { name: "nonce", type: "uint256" },
+    ],
+  },
+};

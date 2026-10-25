@@ -122,6 +122,37 @@ export async function connectSpeculosApprover({
   }
 
   /**
+   * What to do with one screen: advance, or confirm.
+   *
+   * THIS MUST NOT MATCH ON FIELD CONTENT. An earlier version tested the whole
+   * screen text for /approve|accept|.../ and pressed both buttons on a match.
+   * That worked until a struct appeared with a field named `approver` — the
+   * label contains "approve", so a data screen was read as an approval button,
+   * "both" meant "skip the message" rather than "yes", and the review stalled
+   * until the signer timed out 120 seconds later. The symptom (a timeout) was
+   * nowhere near the cause (a substring match), which is why the screen at the
+   * moment of failure is now attached to the error.
+   *
+   * A field screen is `name | value`, and a field screen is NEVER a
+   * confirmation. The device's own prompts are matched anchored, not anywhere.
+   */
+  function decide(text) {
+    const t = text.toLowerCase().trim();
+
+    // The blind-signing warning is a prompt that happens to carry a separator.
+    if (/blind signing ahead|accept risk/.test(t)) return "confirm";
+
+    // Never confirm a screen that would cancel the signature or kill the app.
+    if (/reject|cancel|decline|quit/.test(t)) return "advance";
+
+    // `name | value` — data, not a decision. Keep reading.
+    if (text.includes(" | ")) return "advance";
+
+    if (/^(sign message|approve|accept|confirm|hold to sign|allow)\b/.test(t)) return "confirm";
+    return "advance";
+  }
+
+  /**
    * Walk a review to the end, confirming it.
    *
    * `ready()` gates the first press: pressing while the signer is still
@@ -141,10 +172,7 @@ export async function connectSpeculosApprover({
         screenSink(text);
         last = text;
       }
-      const t = text.toLowerCase();
-      const unsafe = /reject|cancel|decline|quit/.test(t) && !/approve|accept/.test(t);
-      const confirm = /approve|sign message|accept|confirm|hold to|allow/.test(t) && !unsafe;
-      await press(confirm ? "both" : "right");
+      await press(decide(text) === "confirm" ? "both" : "right");
       await sleep(delayMs);
     }
   }
@@ -237,6 +265,11 @@ export async function connectSpeculosApprover({
     } catch (e) {
       settled = true;
       await watching.catch(() => {});
+      // Capture the evidence BEFORE clearing the prompt. The screen at the
+      // moment of failure is the whole diagnosis, and resetToHome destroys it.
+      e.screenAtFailure = await readScreen().catch(() => "(unreadable)");
+      e.stepsSeen = [...steps];
+      e.wantedInteraction = wantsInteraction;
       // DX-LOG D-014: an aborted signing wedges the app, and the NEXT call fails
       // with a misleading 6901. Clear the prompt so one failure is not two.
       await resetToHome().catch(() => {});

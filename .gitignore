@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Compiled contract artifacts and generated views — reproducible with
+# `npm run compile` and `npm run gate-d`, so not worth versioning.
+build/

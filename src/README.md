@@ -24,10 +24,12 @@ and ledger — but never the **amount**. See [`docs/DX-LOG.md`](../docs/DX-LOG.m
 | `mandate/grant.js` | Single-use device-signed answer to one escalation | `viem` |
 | `payer/` | The x402 handshake, behind the Guard | `@ap4m/sdk`, `ethers` |
 | `device/` | A Ledger wrapped as an approver (Speculos or hardware) | `@ledgerhq/*` |
+| `revocation/` | On-chain revocation, read **fail-closed** | `ethers` (lazily) |
+| `receipts/` | The receipt chain, and a self-contained HTML view | `viem` |
 
 The first five are pure: no keys, no device, no network, no model. `payer/` and `device/` are
 the only modules that touch the network or the device, and `payer/` is the only place a verdict turns
-into money moving. 76 tests run with `npm test` and need no hardware, no chain
+into money moving. 92 tests run with `npm test` and need no hardware, no chain
 and no funds — `payer/mock-merchant.mjs` is a local merchant that speaks the
 real AP4M wire format through the SDK's own codecs.
 
@@ -155,6 +157,32 @@ Three properties the suite pins down:
 - **It cannot excuse anything structural.** Wrong chain, wrong asset, unmandated
   payee are DENY, decided before a grant is consulted. A human tapping approve
   cannot authorise them.
+
+## Revocation fails closed, and that is the whole point
+
+```js
+const revocation = createOnChainChecker({ provider, registry: MANDATE_REGISTRY, approver });
+const payer = createPayer({ /* … */ revocation });
+```
+
+The check runs **before** the resource is even requested, and it answers one
+question: may this agent spend right now?
+
+| State | Result |
+| :-- | :-- |
+| read from chain, not revoked | spend |
+| read from chain, revoked | stop, permanently — no `unrevoke` exists |
+| read recently, chain now unreachable | spend, while the read is fresh (`maxStaleMs`) |
+| never read, or the read is stale | **stop**, code `REVOCATION_UNKNOWN` |
+
+A checker that returns "not revoked" when the RPC is down is not a check. The
+moment a human most wants spending to stop is exactly when the network is most
+likely to be the thing in the way. The cost is honest: an outage stops an agent
+that was doing nothing wrong, and `allowStaleWhenOffline` exists only so that a
+deployment preferring availability has to write that choice down.
+
+"Revoked" and "could not find out" report different codes, because a human needs
+to tell *you stopped me* from *I cannot reach the registry*.
 
 ## Autonomy is the point
 

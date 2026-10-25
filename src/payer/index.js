@@ -57,7 +57,8 @@ export const FAILED = "failed";
  * @param {function} [cfg.fetchImpl]      injectable fetch
  * @param {function} [cfg.now]            () => unix seconds
  * @param {function} [cfg.onEvent]        audit sink; every verdict and payment passes through it
- * @param {function} [cfg.isRevoked]      (mandateId) => boolean
+ * @param {function} [cfg.isRevoked]      (mandateId) => boolean, for callers with their own state
+ * @param {object}   [cfg.revocation]     a checker from src/revocation; fails closed (preferred)
  */
 export function createPayer({
   mandate,
@@ -71,6 +72,7 @@ export function createPayer({
   now = () => Math.floor(Date.now() / 1000),
   onEvent = () => {},
   isRevoked = () => false,
+  revocation = null,
 }) {
   const mandateId = hashMandate(mandate);
   const windowSeconds = Number(mandate.message.windowSeconds);
@@ -96,6 +98,28 @@ export function createPayer({
    */
   async function buy(url, { init = {}, grant = null, grantSignatureValid = false } = {}) {
     const gid = grant ? hashGrant(grant) : null;
+
+    // Revocation is checked FIRST, before the resource is even requested.
+    // Asking a merchant to quote a payment we are not allowed to make leaks
+    // intent and wastes a round trip, and the checker fails closed — "could not
+    // read the registry" stops the agent just as "revoked" does, with the
+    // reason carried through so a human can tell the two apart.
+    if (revocation) {
+      const r = await revocation.check(mandateId);
+      if (r.revoked)
+        return emit({
+          outcome: REFUSED,
+          url,
+          verdict: {
+            decision: DENY,
+            code: r.source === "live" || r.source === "cached" ? "REVOKED" : "REVOCATION_UNKNOWN",
+            detail: { source: r.source, ...(r.detail ?? {}) },
+            message: r.detail?.message ?? "mandate has been revoked",
+          },
+          revocation: r,
+          message: `stopped: ${r.detail?.message ?? `mandate revoked (${r.source})`}`,
+        });
+    }
     // The channel id goes on the FIRST request as well as the retry: the
     // merchant needs it to build a challenge naming the right channel and its
     // accepted cumulative total. Omitting it gets you a 402 you cannot pay.
