@@ -69,8 +69,9 @@ XRPL EVM Testnet, **chain 1449000**. RLUSD `0x27b57a9D0b8d24EB97259c4E2279e45255
 > runners now pick the roomiest open channel rather than the first one listed,
 > sample `redeemed` twice before starting, and refuse a run that cannot finish.
 >
-> **Demo channel as of this commit:** `0xba86e459…`, **0.385744 RLUSD — 38 calls**
-> of headroom, and quiet. Proven after the fix with three more payments
+> **Demo channel as of this commit:** `0xba86e459…`, **0.355744 RLUSD — 35 calls**
+> of headroom, and quiet (verified still across 100 seconds with every stray
+> merchant process stopped; `npm run verify-claims` prints the live figure). Proven after the fix with three more payments
 > ([9231696](https://explorer.testnet.xrplevm.org/tx/0x8ac7eefe9c6dca2d16f8da8e4497bb8427b3f53157e6db24dbb98c063c2053db),
 > [9231697](https://explorer.testnet.xrplevm.org/tx/0xcda328dacaba4ea4079ab4da124ca0cf0d090585966421343fd93f82de46606d),
 > [9231698](https://explorer.testnet.xrplevm.org/tx/0x1b969cf49f0aab0f7d51729abc1fed4aa9f3c44a16f56ac0e67da0e4f01f3f8a)),
