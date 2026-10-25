@@ -1,8 +1,11 @@
-# Ledger-gated agent payments on XRPL
+# Autonomous agent payments on XRPL, with a Ledger at the risk boundary
 
-A payment agent that cannot move money past a threshold without a human signature on a
-Ledger device — plus six documented defects found in the sponsors' own SDKs and docs
-while building it.
+An agent that meets an HTTP 402, decides to pay, signs the voucher and settles RLUSD to
+the merchant — with no human in the loop. Payments that cross a risk boundary are the
+exception: those alone stop and wait for a signature on a Ledger device.
+
+Plus seven documented defects found in the sponsors' own SDKs and docs while building it,
+two of them already filed upstream against Ledger's SDK.
 
 Built at the Ledger x XRPL hackathon (XRPL Commons / XRP Ledger Foundation / Swell,
 New York, 24–25 October 2026), using the Mastercard AP4M payment kit on the XRPL EVM
@@ -12,14 +15,20 @@ Testnet only. Every key in this repository is a testnet key.
 
 ## The idea
 
-An autonomous agent with a funded budget is useful and unnerving in the same breath.
-The useful part is that it pays for things without waiting for a person. The unnerving
-part is the same sentence.
+The agent pays by itself. It receives a 402, chooses to pay, signs a voucher and settles,
+with no person anywhere in the path — which is the entire point of a machine that buys
+things. Every AP4M payment in the [Transactions](#transactions) section below ran that
+way, start to finish. The one transaction there that a human signed is the gate's
+exception path, and it is labelled as such.
 
-So the boundary is the product. Small, clean payments release automatically. Anything
-over a cap, newly-seen, or flagged by compliance stops and waits for a human to approve
-it on a Ledger device. A sanctions hit or a critical ledger-health reading cannot be
-approved by anyone at all.
+That autonomy is also what makes it unnerving, and the second half of the product is the
+answer: the agent runs unattended right up to the point where a payment is large,
+unfamiliar or compliance-flagged, and only there does it stop for a human signature on a
+Ledger device. A sanctions hit or a critical ledger-health reading cannot be approved by
+anyone at all.
+
+Most payments never touch the gate, and that is the design. A gate that stops everything
+is just a slow person.
 
 ```
 agent / pipeline → POST /intents → policy → auto-release (hot wallet)
@@ -57,21 +66,28 @@ its known limits.
 ### 2. `filings/` — developer-experience defects, with receipts
 
 Track 01 states that bug reports count and that DX feedback is judged as much as code.
-Six defects were found while building, each with a reproduction. Four belong to Ledger,
-two to Mastercard. The two sets do not compete for the same slot, so they are ranked
+Seven defects were found while building, each with a reproduction. Four belong to Ledger,
+three to Mastercard. The two sets do not compete for the same slot, so they are ranked
 within each sponsor rather than against each other.
 
 Submission order, strongest first — the ranking rule is that *a filing nobody can argue
 with beats a better filing that needs careful handling*:
 
-| # | Filing | To | Why it ranks here |
-|---|---|---|---|
-| 1 | [`01-signer-return-type.md`](filings/01-signer-return-type.md) | Ledger | A published type that does not match the shipped package. Admits no interpretation. |
-| 2 | [`03-derivation-path.md`](filings/03-derivation-path.md) | Ledger | Two examples on one page that disagree; one uses Bitcoin's coin type for XRP. |
-| 3 | [`02-chain-id-only-mainnet.md`](filings/02-chain-id-only-mainnet.md) | Ledger | A documentation *gap*, not a wrong value. See the note below. |
-| 4 | [`04-clear-signing-payment.md`](filings/04-clear-signing-payment.md) | Ledger | Worth the most, needs the most care. Scoped to `Payment`. Carries screen sets from three devices. |
-| 5 | [`05-ap4m-dead-faucet.md`](filings/05-ap4m-dead-faucet.md) | Mastercard / AP4M | A served config value pointing at a host with no DNS records. One DNS lookup demonstrates it. |
-| 6 | [`06-two-judging-rubrics.md`](filings/06-two-judging-rubrics.md) | Mastercard / AP4M | The integration guide and the workshop deck each self-describe as the judging criteria and score different things. |
+| # | Filing | To | Status | Why it ranks here |
+|---|---|---|---|---|
+| 1 | [`01-signer-return-type.md`](filings/01-signer-return-type.md) | Ledger | **filed** — [issue #2051](https://github.com/LedgerHQ/device-sdk-ts/issues/2051) | A published type that does not match the shipped package. Admits no interpretation. |
+| 2 | [`03-derivation-path.md`](filings/03-derivation-path.md) | Ledger | **filed** — [PR #2050](https://github.com/LedgerHQ/device-sdk-ts/pull/2050) | Two examples on one page that disagree; one uses Bitcoin's coin type for XRP. |
+| 3 | [`02-chain-id-only-mainnet.md`](filings/02-chain-id-only-mainnet.md) | Ledger | drafted | A documentation *gap*, not a wrong value. See the note below. |
+| 4 | [`04-clear-signing-payment.md`](filings/04-clear-signing-payment.md) | Ledger | drafted | Worth the most, needs the most care. Scoped to `Payment`. Carries screen sets from three devices. |
+| 5 | [`05-ap4m-dead-faucet.md`](filings/05-ap4m-dead-faucet.md) | Mastercard / AP4M | drafted | A served config value pointing at a host with no DNS records. One DNS lookup demonstrates it. |
+| 6 | [`06-two-judging-rubrics.md`](filings/06-two-judging-rubrics.md) | Mastercard / AP4M | drafted | The integration guide and the workshop deck each self-describe as the judging criteria and score different things. |
+| 7 | [`07-paymentledger-unverified.md`](filings/07-paymentledger-unverified.md) | Mastercard / AP4M | drafted | The On-chain proof criterion sends judges to an explorer that cannot name the event. All four AP4M contracts are unverified. |
+
+**Two are filed upstream, against Ledger's own repository** (2026-10-25, both open):
+`03` as a documentation PR fixing the `signTransaction` derivation-path example, and `01`
+as an issue reporting that the developer portal serves XRP signer docs from before the
+2026-10-22 fix. Track 01 says bug reports and PRs count; these are that, in Ledger's
+issue tracker rather than in a slide. `filings/SUBMISSIONS.md` tracks the rest.
 
 `filings/evidence/` holds full device screen sets from Flex, Stax and Apex P (28 files),
 with a capture script that reproduces any of the three runs.
@@ -113,7 +129,8 @@ exercised all four policy outcomes and landed two real transactions. Hashes belo
 substitutes a software key for the device, and the device leg has otherwise only been
 exercised on Speculos. The gate has no authentication and keeps state in memory.
 Non-`Payment` transaction types show a "no preview yet" notice and need the device's
-blind-signing setting. None of the six filings has been submitted.
+blind-signing setting. Five of the seven filings are drafted but not yet sent; the other
+two are filed and open upstream, linked in the table above.
 
 ## Transactions
 
@@ -159,10 +176,47 @@ chain-of-custody, including the claim-ID matching, is in
 | Agent redeems a signed voucher (`redeemVoucher`, 147,087 gas) | `0xe39c8fb5b1868c94db686f89a614710bcc884c16cba8cc5fe9484a99cc5e0bf6` |
 | Vault pays the merchant 0.01 RLUSD | `0x23c4beb9264b7ee3f0e2ef81182c1605f8d7045954aa1c750386e6e243389a6c` |
 
-The claim emitted by `PaymentLedger` is a log inside the redemption transaction, not a
-transaction of its own. The claim IDs that appear in the AP4M portal — `0x99e40a07…` for
-payment 1 and `0xce2bb492…` for payment 2 — were matched against the event-log topics of
-those two redemptions, which is what ties the portal's receipt to the chain.
+### The redemption event — what to open
+
+AP4M's judging asks for a `VoucherRedeemed` event on the explorer at the `PaymentLedger`
+address. It is a **log inside the redemption transaction**, not a transaction of its own,
+so open either redemption hash above and read its logs:
+
+```
+https://explorer.testnet.xrplevm.org/tx/0xcb1f2dabc921537530af35d8686b8aa21e3d8ce3fe9560823f79a471ffc33d9f?tab=logs
+```
+
+**Measured.** That log is emitted by `PaymentLedger`
+(`0xcAB42800A5ECF0D253Fa2581Bb3334B4DAEfaE91`) with
+`topic0 = 0xe3de5c3755abd99a01530fd79b85708f309453f6d26eb9bb5dde4c14cd5f7175`, and
+carries `channelId` and `claimId` as indexed topics. The claim IDs shown in the AP4M
+portal — `0x99e40a07…` for payment 1, `0xce2bb492…` for payment 2 — match those topics,
+which is what ties the portal's receipt to the chain.
+
+**Confirmed — the log is `VoucherRedeemed`.** AP4M's own SDK helper declares the
+signature at `ap4m-hackathon-sdk.js:203`:
+
+```
+VoucherRedeemed(bytes32,bytes32,bytes32,bytes32,address,bytes32,address,address,uint256,uint256,uint256)
+```
+
+`keccak256` of that string is exactly the `topic0` above. Reproduce it in one command,
+offline:
+
+```bash
+node -e "console.log(require('viem').toEventSelector('VoucherRedeemed(bytes32,bytes32,bytes32,bytes32,address,bytes32,address,address,uint256,uint256,uint256)'))"
+```
+
+**But the explorer will not show you that name.** The `PaymentLedger` source is
+unverified on the explorer and absent from Sourcify, and the topic is in neither the
+openchain nor the 4byte signature registry — all four checked on 2026-10-25. A judge who
+follows the rubric to the explorer sees an unnamed topic hash and has no way, from there,
+to tell it is the event they were sent to find. The name is recoverable only from the
+SDK, as above.
+
+Verifying the contract is AP4M's to do — it needs their Solidity source, which is not
+published. Until then, the hash above is the bridge between the rubric's wording and what
+the explorer actually renders.
 
 Verify any of them without AP4M being reachable at all:
 
@@ -182,6 +236,28 @@ RPC_URL=<your node> node verify-receipt-onchain.mjs   0xcb1f2dabc921537530af35d8
 
 The agent and payout addresses differ, which AP4M requires: the party authorising a
 payment cannot be the party receiving it.
+
+## The three-minute demo
+
+Live, on testnet, no recorded output. `npm run predemo` is the gate on starting at all:
+it checks the wallets, the registration and the gas, and exits non-zero if the run would
+fail. Do not skip it in front of an audience.
+
+| # | Step | Command | What the room sees |
+|---|---|---|---|
+| 1 | Pre-flight | `npm run predemo` | exit 0 — wallets funded, agent registered |
+| 2 | Agent pays, unattended | `npm run demo` | channel opened, voucher signed, settled, closed |
+| 3 | Proof, from a public node | `node verify-receipt-onchain.mjs <hash>` | the redemption and the RLUSD payout, read from chain |
+| 4 | The boundary | `ledger-approver/` — seed a large payment | it stops; approve it on the device |
+
+Steps 1–3 are the autonomy story and need no person beyond pressing return. Step 4 is the
+exception path, and is the only point a human appears.
+
+**Measured** for steps 1–3: the hashes in [Transactions](#transactions) came from this
+sequence. **Not measured:** the x402 leg (`example-x402-agent.mjs` with
+`example-x402-merchant.mjs`) is where the literal 402 response appears, and it has not
+been run end to end from this checkout. If the demo needs to show the 402 itself rather
+than the payment it causes, rehearse that pair first.
 
 ## Run it
 
@@ -239,7 +315,7 @@ that last case.
 | Path | What it is |
 |---|---|
 | `ledger-approver/` | Policy engine, gate service, React approver app, tests |
-| `filings/` | Six DX defect filings and device evidence |
+| `filings/` | Seven DX defect filings and device evidence |
 | `vi-replay/` | Verifiable-intent replay fixtures and the audit validator |
 | `workspace/` | The ICM workspace. Two tracks: `tracks/build` and `tracks/filing`, the pipeline the filings were produced through |
 | `ap4m-agent.cjs`, `run-ap4m.cjs`, `close-channel.cjs` | The AP4M payment agent and its runner |

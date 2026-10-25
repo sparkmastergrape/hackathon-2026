@@ -1,12 +1,13 @@
 # Documentation filings
 
-Six defects, each with a receipt. Two sponsors.
+Seven defects, each with a receipt. Two sponsors.
 
 **Two are filed** (2026-10-25): `03` as
 [PR #2050](https://github.com/LedgerHQ/device-sdk-ts/pull/2050), `01` as
 [issue #2051](https://github.com/LedgerHQ/device-sdk-ts/issues/2051). The PR
-commit still needs a GPG signature — see `SUBMISSIONS.md`. The other four need
-a human channel; the event page names none.
+commit still needs a GPG signature. The other five are drafted and unsent; they
+need a human channel, and the event page names none. `SUBMISSIONS.md` tracks the
+state of each.
 
 Read `vi-replay/HANDOFF.md` for the state these came out of.
 
@@ -23,6 +24,7 @@ careful handling.
 | 4 | `04-clear-signing-payment.md` | Ledger, Track 01 | Worth the most, needs the most care. Scope to `Payment` or it is refused. Carries full screen sets from three devices in `evidence/`. |
 | 5 | `05-ap4m-dead-faucet.md` | Mastercard, AP4M | Clean and separate. Does not compete with the Ledger set. |
 | 6 | `06-two-judging-rubrics.md` | Mastercard, AP4M | Two surfaces that each self-describe as the judging criteria and score different things. Scoped so neither is called wrong. |
+| 7 | `07-paymentledger-unverified.md` | Mastercard, AP4M | The On-chain proof criterion sends judges to an explorer that cannot name the event. Concedes that the adjacent RLUSD criterion still works. |
 
 ## The order changed while drafting, and the reason matters
 
