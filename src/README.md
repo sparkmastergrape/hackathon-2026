@@ -21,11 +21,13 @@ and ledger — but never the **amount**. See [`docs/DX-LOG.md`](../docs/DX-LOG.m
 | `mandate/` | EIP-712 types, build, hash, verify | `viem` |
 | `ledger-spend/` | Reservations, aggregates, rate windows, AP4M cumulative vouchers | — |
 | `guard/` | Pure verdict function: ALLOW / ESCALATE / DENY | `viem` |
+| `mandate/grant.js` | Single-use device-signed answer to one escalation | `viem` |
 | `payer/` | The x402 handshake, behind the Guard | `@ap4m/sdk`, `ethers` |
+| `device/` | A Ledger wrapped as an approver (Speculos or hardware) | `@ledgerhq/*` |
 
-The first four are pure: no keys, no device, no network, no model. `payer/` is
-the only module that touches the network, and the only place a verdict turns
-into money moving. 67 tests run with `npm test` and need no hardware, no chain
+The first five are pure: no keys, no device, no network, no model. `payer/` and `device/` are
+the only modules that touch the network or the device, and `payer/` is the only place a verdict turns
+into money moving. 76 tests run with `npm test` and need no hardware, no chain
 and no funds — `payer/mock-merchant.mjs` is a local merchant that speaks the
 real AP4M wire format through the SDK's own codecs.
 
@@ -123,6 +125,36 @@ if (r.outcome === REQUIRES_CONFIRMATION) await askTheHuman(r.verdict);
 point: `evaluate()` before anything is reserved or signed, `reserve()` before
 the voucher is signed (a signed voucher is a bearer instrument), and `release()`
 on every failure path.
+
+## Escalation: what "the human decides" actually means
+
+When the Guard returns ESCALATE, the payer returns `requires_confirmation` with
+an `ask` — amount, payee, asset, resource — and the approver turns that into a
+**Grant** signed on the device:
+
+```js
+const stopped = await payer.buy(url);          // requires_confirmation
+const grant = buildGrant({ ...stopped.ask, registry: MANDATE_REGISTRY });
+const signature = await device.signTypedData(toGrantSignerPayload(grant));
+await payer.buy(url, { grant, grantSignatureValid: true });   // paid, WITHIN_GRANT
+```
+
+A Grant is **one payment**: exact amount, exact payee, exact resource,
+single-use, minutes-long expiry. It is not a re-signed Mandate with bigger
+numbers, because that would turn "yes, buy this one thing" into a larger
+standing budget for the rest of the hour. The blast radius of a mistaken tap is
+one payment.
+
+Three properties the suite pins down:
+
+- **It lifts the mandate's caps, never the channel's.** An on-chain ceiling is
+  not a policy question; a voucher above it is simply unredeemable, and no
+  signature changes that.
+- **A granted payment still counts.** The amount lands in the spend ledger and
+  reduces what the agent may spend unattended afterwards.
+- **It cannot excuse anything structural.** Wrong chain, wrong asset, unmandated
+  payee are DENY, decided before a grant is consulted. A human tapping approve
+  cannot authorise them.
 
 ## Autonomy is the point
 

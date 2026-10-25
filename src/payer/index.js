@@ -36,6 +36,7 @@ import {
   describeVerdict,
 } from "../guard/index.js";
 import { hashMandate } from "../mandate/index.js";
+import { hashGrant } from "../mandate/grant.js";
 import { HEADERS } from "../config/network.js";
 
 /** Outcomes of buy(). `requires_confirmation` reuses the seam x402 SDKs already expose. */
@@ -85,7 +86,16 @@ export function createPayer({
    * Attempt to buy `url`, paying automatically if and only if the Guard allows.
    * Never throws on a refusal — a refusal is a result, not an exception.
    */
-  async function buy(url, { init = {} } = {}) {
+  /**
+   * @param {string} url
+   * @param {object} [o]
+   * @param {object} [o.init]   fetch init
+   * @param {object} [o.grant]  a device-signed Grant resolving an earlier ESCALATE
+   *                            for this exact payment (src/mandate/grant.js)
+   * @param {boolean} [o.grantSignatureValid] resolved by the caller
+   */
+  async function buy(url, { init = {}, grant = null, grantSignatureValid = false } = {}) {
+    const gid = grant ? hashGrant(grant) : null;
     // The channel id goes on the FIRST request as well as the retry: the
     // merchant needs it to build a challenge naming the right channel and its
     // accepted cumulative total. Omitting it gets you a 402 you cannot pay.
@@ -122,6 +132,10 @@ export function createPayer({
       spend: ledger.snapshot(mandateId, { windowSeconds }),
       channelCumulative: ledger.committedCumulative(channelId),
       channelCap,
+      grant,
+      grantId: gid,
+      grantSignatureValid,
+      grantConsumed: gid ? ledger.isGrantUsed(gid) : false,
       policy: { expectedChannelId: channelId, ...policy },
     });
 
@@ -134,6 +148,16 @@ export function createPayer({
         url,
         verdict,
         challenge,
+        // Everything the approver UI needs to put a Grant on the device screen,
+        // so the caller never has to re-parse the challenge to ask the question.
+        ask: {
+          mandateId,
+          agent: mandate.message.agent,
+          merchant: challenge.accepts[0].payTo,
+          asset: mandate.message.asset,
+          amount: amountFromAccepts(challenge.accepts[0]),
+          resource: challenge.resource?.url ?? url,
+        },
         message: describeVerdict(verdict),
       });
 
@@ -149,6 +173,10 @@ export function createPayer({
       caps: mandate.message,
       channelId,
       channelCap,
+      // Only pass the grant through to the enforcement point if the Guard
+      // actually allowed on its strength. A grant attached to a payment that
+      // was within the envelope anyway must not be burned.
+      ...(verdict.code === "WITHIN_GRANT" ? { grantId: gid, grantAmount: amount } : {}),
     });
     if (!reservation.ok)
       return emit({

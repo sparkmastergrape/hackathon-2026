@@ -204,6 +204,18 @@ const maximum  = expected + BigInt(accepted.amount);               // what gets 
 **Our handling:** `src/payer/gate-c.mjs` reads the PaymentLedger at startup and reconciles; a challenge still claiming more requires an explicit `--accept-claimed` and is bounded by the channel cap. Reconciliation is a startup decision, printed; never a silent per-payment default.
 **Status:** confirmed live on chain 1449000 · not filed
 
+### D-026 · `bytes32` paginates readably; a URL does not wrap on a word boundary
+**Observed, signing the Grant on device:** a `bytes32` renders as `mandateId (1/2)` then `(2/2)` — the app paginates long values and labels the pages, which is better than the "two screens of unexplained hex" we assumed when designing the Mandate (D-012). A `string` holding a URL is **not** paginated the same way: `resource | http://127.0.0.1:57141/ | resource` splits mid-path, with no page markers.
+**Design consequence we acted on:** `bytes32` is acceptable for machine-binding fields a human is not expected to read, since the device at least tells them there is more. For fields the human *must* read, keep them short — `MAX_RESOURCE_CHARS = 64` in `src/mandate/grant.js` is enforced at build time, with the reason in a comment, so a long resource fails in a test rather than on a stranger's device screen.
+**Fix (suggestion for Ledger):** document the pagination behaviour per field type in the Clear Signing guide. Field typing is a security decision and the rendering rules are the only way to make it an informed one.
+**Status:** measured on app-ethereum 1.23.0 (nanox) · not filed
+
+### D-027 · The context module reaches the network on every unregistered sign, and says so twice
+**Observed:** each `signTypedData` on an unregistered contract logs `Direct gated descriptor lookup failed and proxy resolution failed`, with both a `directError` and a `proxyError`, and makes two HTTP attempts before falling back to blind signing. The signature then succeeds normally.
+**Why it is worth a note:** it is noise that reads like a failure — on a first run it is the loudest thing in the log while everything is in fact fine — and it is latency on a path that is otherwise local. For an agent signing repeatedly it is two failed network calls per payment.
+**Fix:** downgrade the message to debug when the fallback succeeds, or let the caller declare "unregistered, do not look" and skip the lookups. Either would make the first-run experience markedly less alarming.
+**Status:** confirmed, benign · not filed
+
 ---
 
 ## Live entries

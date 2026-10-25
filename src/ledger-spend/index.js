@@ -35,6 +35,25 @@ export class SpendLedger {
     this.channelCumulative = new Map();
     /** @type {Map<string, object>} */
     this.reservations = new Map();
+    /** @type {Map<string, {ts:number, amount:bigint, reservationId:string}>} spent grants */
+    this.grantsUsed = new Map();
+  }
+
+  /**
+   * Grants are single-use, and this is where that is true.
+   *
+   * A grant is marked spent at RESERVE time, not after the payment settles. If
+   * it were marked on success, a payment that failed in flight would leave the
+   * grant live and a retry could spend it twice; marking on reserve means the
+   * worst case is a human asked again for a payment that never happened —
+   * annoying, and the right way round.
+   */
+  isGrantUsed(id) {
+    return this.grantsUsed.has(id);
+  }
+
+  grantUse(id) {
+    return this.grantsUsed.get(id) ?? null;
   }
 
   _mandate(mandateId) {
@@ -98,7 +117,7 @@ export class SpendLedger {
    * @returns {{ok:true, reservationId:string, cumulativeAmount?:bigint, snapshot:object}
    *          | {ok:false, code:string, detail:object}}
    */
-  reserve({ mandateId, amount, caps, channelId, channelCap }) {
+  reserve({ mandateId, amount, caps, channelId, channelCap, grantId, grantAmount }) {
     amount = BigInt(amount);
     if (amount <= 0n) return { ok: false, code: "NON_POSITIVE_AMOUNT", detail: { amount } };
 
@@ -107,19 +126,40 @@ export class SpendLedger {
     const maxPerWindow = BigInt(caps.maxPerWindow);
     const windowSeconds = Number(caps.windowSeconds);
 
-    if (amount > maxPerCall)
+    // A grant lifts the mandate's caps for THIS payment and no other. It does
+    // not raise the envelope: the amount still lands in the ledger and still
+    // counts towards every later payment's totals, so one granted purchase
+    // reduces what the agent may spend unattended afterwards. The human said
+    // yes to a payment, not to a bigger budget.
+    //
+    // The channel cap is NOT liftable — it is an on-chain ceiling, and a
+    // voucher above it is simply unredeemable. No signature changes that.
+    let granted = false;
+    if (grantId) {
+      if (this.isGrantUsed(grantId))
+        return { ok: false, code: "GRANT_SPENT", detail: { grantId, use: this.grantUse(grantId) } };
+      if (BigInt(grantAmount) !== amount)
+        return {
+          ok: false,
+          code: "GRANT_AMOUNT_MISMATCH",
+          detail: { grantAmount: BigInt(grantAmount), amount },
+        };
+      granted = true;
+    }
+
+    if (!granted && amount > maxPerCall)
       return { ok: false, code: "OVER_PER_CALL", detail: { amount, maxPerCall } };
 
     const snap = this.snapshot(mandateId, { windowSeconds });
 
-    if (snap.total + amount > maxTotal)
+    if (!granted && snap.total + amount > maxTotal)
       return {
         ok: false,
         code: "OVER_TOTAL",
         detail: { spent: snap.total, amount, maxTotal, remaining: maxTotal - snap.total },
       };
 
-    if (snap.window + amount > maxPerWindow)
+    if (!granted && snap.window + amount > maxPerWindow)
       return {
         ok: false,
         code: "OVER_WINDOW",
@@ -152,9 +192,11 @@ export class SpendLedger {
       mandateId,
       channelId,
       cumulativeAmount,
+      grantId: grantId ?? undefined,
     };
     this._mandate(mandateId).entries.push(entry);
     this.reservations.set(id, entry);
+    if (grantId) this.grantsUsed.set(grantId, { ts: this.now(), amount, reservationId: id });
     return {
       ok: true,
       reservationId: id,

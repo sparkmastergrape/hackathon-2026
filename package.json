@@ -14,7 +14,8 @@
     "probe:network": "node src/payer/probe-network.mjs",
     "probe:session": "node src/payer/probe-session.mjs",
     "open-channel": "node src/payer/open-channel.mjs",
-    "gate-c": "node src/payer/gate-c.mjs"
+    "gate-c": "node src/payer/gate-c.mjs",
+    "gate-d": "node src/payer/gate-d.mjs"
   },
   "repository": {
     "type": "git",

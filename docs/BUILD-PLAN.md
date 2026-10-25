@@ -32,8 +32,8 @@ Outputs: 5 DX findings (DX-LOG D-009…D-013), two of them PR-worthy.
 3. ~~Spend Ledger: reserve → commit/release, aggregate + rate windows~~ ✅ `src/ledger-spend`
 4. AP4M payer wrapper — **✅ built and proven without funds** (`src/payer`), one real RLUSD payment on chain 1449000 still to go.
    The whole path runs against a local merchant that speaks the real wire format via `@ap4m/sdk`'s own codecs: 402 → Guard verdict → reserve → two typed-data signatures → retry → commit. 13 tests, including 40 consecutive unattended payments, a cap that stops the agent dead, a redirected payee that never reaches ALLOW, and a merchant inflating the channel's running total. Opening the channel is now the only unproven step.
-5. Approver UI: issue a mandate on device; resolve an escalation on device.
-6. End-to-end: agent makes many auto-paid calls under one mandate, then hits one that escalates and blocks for the device.
+5. ~~Approver on device: issue a mandate; resolve an escalation~~ ✅ `src/device/speculos-approver.mjs` + `src/mandate/grant.js`. A **Grant** is the escalation answer: one payment, one exact amount and payee, single-use, minutes-long expiry — deliberately not a re-signed Mandate, because a mistaken tap should cost one payment and not an hour's larger budget.
+6. ~~End-to-end: many auto-paid calls, then one that escalates and blocks for the device~~ ✅ `npm run gate-d` (Gate D below). A graphical approver UI is still only a terminal; the device screens are the interface that matters and they are captured verbatim.
 
 ### Tier 2 — Should ship (materially raises the score)
 7. Revocation registry contract + device-signed revoke, with the Guard failing closed.
@@ -104,7 +104,21 @@ Not optional. A 36-hour sprint with no sleep produces hour-30 code you will spen
 ### H+14 → H+20 · The human in the loop
 Approver UI: mandate issuance on device, escalation resolution on device. Agent blocks on ESCALATE, resumes on grant, stops on DENY. Render the `requiredUserInteraction` states.
 
-> **GATE D (H+20).** Full escalation round-trip works with the real device.
+> **GATE D.** ✅ **PASSED** (2026-10-25) — `npm run gate-d`, seven steps, device in the loop throughout. Both signatures recover to the Speculos device address `0xDad77910DbDFdE764fC21FCD4E74D71bBACA6D8D`.
+>
+> | Step | Observed |
+> | :-- | :-- |
+> | Mandate signed on device | 37 screens read; `chainId 1449000`, `purpose market-data`, every cap in plain digits |
+> | 4 unattended payments | device untouched |
+> | Over-cap payment | `ESCALATE [OVER_PER_CALL]`, nothing reserved |
+> | Grant signed on device | 24 screens: `amount 200000000000000000`, `resource http://…/resource`, `mandateId` across 2 pages |
+> | Resume | paid `WITHIN_GRANT` |
+> | Same grant replayed | `DENY [GRANT_SPENT]` |
+> | Poisoned payee | `ESCALATE [UNKNOWN_MERCHANT]` by default, `DENY` under `onUnknownMerchant: DENY` — never paid |
+>
+> **Live variant** (`npm run gate-d -- --live`): the Mandate signed on the device authorised three real RLUSD payments, redeemed on chain 1449000 — `0x884f69d6…` (block 9228798), `0xbdfa0d01…` (9228799), `0xe4c9e62c…` (9228800). Channel `redeemed` moved 0.21 → 0.24 RLUSD. **This is the whole claim in one run: a hardware signature at the top, money on a public chain at the bottom, and no human in between.**
+>
+> The over-cap brake is skipped in `--live` because the real merchant has a fixed price and cannot be told to overcharge; that step runs against the mock, where the merchant can be made to misbehave on demand.
 
 ### H+20 → H+26 · Tier 2
 Revocation contract + device-signed revoke (this is also the clean on-chain-transaction proof). Receipt chain view. Injection scene. Library README.

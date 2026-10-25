@@ -49,6 +49,12 @@ export const CODES = {
   MULTIPLE_ACCEPTS: DENY,
   NOT_YET_VALID: DENY,
   NON_POSITIVE_AMOUNT: DENY,
+  // DENY — a grant that does not match what it is being used for is worse than
+  // no grant at all: it means something is being replayed or substituted.
+  GRANT_MISMATCH: DENY,
+  GRANT_EXPIRED: DENY,
+  GRANT_SPENT: DENY,
+  BAD_GRANT_SIGNATURE: DENY,
   // ESCALATE
   OVER_PER_CALL: ESCALATE,
   OVER_TOTAL: ESCALATE,
@@ -60,6 +66,8 @@ export const CODES = {
 
 const verdict = (decision, code, detail, message) => ({ decision, code, detail, message });
 const allow = (detail) => verdict(ALLOW, "WITHIN_MANDATE", detail, "within the signed envelope");
+const allowByGrant = (detail) =>
+  verdict(ALLOW, "WITHIN_GRANT", detail, "a human granted this one payment on the device");
 
 /**
  * Read the price out of a 402 challenge entry.
@@ -102,6 +110,10 @@ const sameAddress = (a, b) => {
  * @param {object}  p.spend          SpendLedger.snapshot() for this mandate
  * @param {bigint}  [p.channelCumulative] cumulative already claimed on the channel
  * @param {bigint}  [p.channelCap]
+ * @param {object}  [p.grant]               a device-signed Grant for THIS payment (src/mandate/grant.js)
+ * @param {string}  [p.grantId]             its digest
+ * @param {boolean} [p.grantSignatureValid] resolved by the caller, like signatureValid
+ * @param {boolean} [p.grantConsumed]       has this grant already been spent
  * @param {object}  [p.policy]
  * @returns {{decision:string, code:string, detail:object, message:string}}
  */
@@ -116,6 +128,10 @@ export function evaluate({
   spend,
   channelCumulative = 0n,
   channelCap,
+  grant = null,
+  grantId = null,
+  grantSignatureValid = false,
+  grantConsumed = false,
   policy = {},
 }) {
   const {
@@ -248,6 +264,46 @@ export function evaluate({
       { got: a.extra.channelId, want: expectedChannelId },
       "402 names a different payment channel",
     );
+
+  // --- a grant, if one was offered for this exact payment.
+  //
+  // A grant is checked AFTER every structural test above and BEFORE the caps,
+  // because that is precisely its scope: it answers a quantitative question a
+  // human is entitled to answer, and it can never excuse a wrong chain, a wrong
+  // asset or an unknown payee. Those already returned DENY and never reach here.
+  //
+  // Everything about the grant must match this payment exactly. A grant is for
+  // one payment, so "close enough" is a replay.
+  if (grant) {
+    const g = grant.message ?? {};
+    const mismatch = (field, got, want) =>
+      deny("GRANT_MISMATCH", { field, got, want }, `grant does not match this payment: ${field}`);
+
+    if (!grantSignatureValid)
+      return deny("BAD_GRANT_SIGNATURE", { grantId }, "grant signature did not verify");
+    if (grantConsumed)
+      return deny("GRANT_SPENT", { grantId }, "that grant has already been used once");
+    if (g.mandateId !== mandateId) return mismatch("mandateId", g.mandateId, mandateId);
+    if (!sameAddress(g.agent ?? "", m.agent)) return mismatch("agent", g.agent, m.agent);
+    if (!sameAddress(g.merchant ?? "", a.payTo)) return mismatch("merchant", g.merchant, a.payTo);
+    if (!sameAddress(g.asset ?? "", m.asset)) return mismatch("asset", g.asset, m.asset);
+    if (BigInt(g.amount) !== amount) return mismatch("amount", BigInt(g.amount), amount);
+    if (challenge?.resource?.url && g.resource !== challenge.resource.url)
+      return mismatch("resource", g.resource, challenge.resource.url);
+    if (now >= Number(g.validUntil))
+      return deny(
+        "GRANT_EXPIRED",
+        { now, validUntil: Number(g.validUntil) },
+        "grant has expired — ask again rather than stretching an old yes",
+      );
+
+    return allowByGrant({
+      amount,
+      merchant: a.payTo,
+      grantId,
+      grantExpires: Number(g.validUntil),
+    });
+  }
 
   // --- quantitative caps. Mirrors SpendLedger.reserve(), which re-checks
   //     atomically; this pass exists so the agent gets a reasoned verdict
