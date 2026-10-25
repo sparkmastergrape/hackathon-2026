@@ -281,7 +281,7 @@ The question that matters: *the agent is fully compromised — what can it do?*
 | # | Threat | Control | Residual |
 | :-- | :-- | :-- | :-- |
 | T1 | Prompt injection redirects payment to attacker address | `merchantRoot` allowlist is inside the signed payload; C2 is not an LLM and cannot be argued with | An already-allowlisted merchant can be overpaid up to `maxPerCall` |
-| T2 | Compromised agent runtime tries to spend freely | Agent holds no mandate-signing key; caps enforced in C2 | Bounded by the envelope — which is the entire point |
+| T2 | Compromised agent runtime tries to spend freely | Agent holds no mandate-signing key; caps enforced in C2 | **Bounded by the on-chain channel cap, not by the Mandate** — see §7.1 |
 | T3 | Malicious 402 sets an absurd `amount` or fee | Pin network and scheme filters, cap value and fee, never let `extra` flow unexamined into a transaction | — |
 | T4 | Replay of one payment against many invoices | Invoice binding, bounded validity window on the signed payload | — |
 | T5 | Concurrent tool calls each pass the same aggregate check | C3 reserves before paying; the reservation is the lock | Needs a real transaction/lock, not read-then-write |
@@ -299,6 +299,43 @@ in the whole integration: the price in the 402 can be entirely correct while the
 amount actually signed is not.
 
 **The honest limit:** Mandate bounds *how much* and *to whom*, not *whether the purchase was wise*. An agent inside its envelope can still buy something useless. We say this out loud rather than overclaiming.
+
+### 7.1 Two compromises, and only one of them is contained
+
+T1 and T2 read similarly and are not the same threat. The difference decides what
+this project can honestly claim, so it is written down rather than blurred.
+
+**Compromise of the agent's reasoning is contained.** Injection, jailbreak, a
+poisoned tool result, a model that is simply wrong — all of it arrives as *prose*,
+and nothing in the enforcement path reads prose. The Guard reads a struct a human
+signed on a device, compares it to a decoded 402, and returns a verdict; it is not
+an LLM and has no instructions to override. So there is no phrasing of any document
+that widens the envelope. `src/demo/poisoned-docs.js` is eight attempts at exactly
+this, each one assuming the agent is fully obedient to the attacker, and
+`src/demo/injection.test.mjs` fails the build if any of them ever reaches a
+payment — or stops failing for the reason it is supposed to fail for.
+
+**Compromise of the process holding the voucher key is not.** In AP4M the agent's
+own software key signs vouchers. Code running *as the agent*, with that key, can
+sign a cumulative voucher the Guard never approved and hand it to the merchant
+directly; our Guard, ledger and receipt chain are then simply not in the path.
+What bounds that attacker is the **on-chain channel cap** — which no signature can
+lift, because the PaymentLedger contract will not redeem above it — and nothing
+else. Revocation shortens the window; it does not close it, because an unredeemed
+voucher is already a bearer instrument.
+
+Three consequences we accept rather than paper over:
+
+- The channel cap *is* the real loss limit under full host compromise. It is kept
+  small and funded deliberately for that reason, not for convenience.
+- Mandate caps are enforced by *our* software. They are a control against a
+  misled agent, an honest bug, and a hostile counterparty — not against an
+  attacker with code execution next to the key.
+- Closing that gap means the voucher key leaves the host: a device-signed or
+  enclave-held voucher per payment, or a contract that will only redeem vouchers
+  countersigned under a Mandate. Both are out of scope for 36 hours, and both are
+  the right next step. Neither is implemented here, and the demo does not imply
+  otherwise.
 
 ---
 

@@ -26,10 +26,11 @@ and ledger — but never the **amount**. See [`docs/DX-LOG.md`](../docs/DX-LOG.m
 | `device/` | A Ledger wrapped as an approver (Speculos or hardware) | `@ledgerhq/*` |
 | `revocation/` | On-chain revocation, read **fail-closed** | `ethers` (lazily) |
 | `receipts/` | The receipt chain, and a self-contained HTML view | `viem` |
+| `demo/` | The prompt-injection corpus, and the runner the tests share | — |
 
 The first five are pure: no keys, no device, no network, no model. `payer/` and `device/` are
 the only modules that touch the network or the device, and `payer/` is the only place a verdict turns
-into money moving. 92 tests run with `npm test` and need no hardware, no chain
+into money moving. 104 tests run with `npm test` and need no hardware, no chain
 and no funds — `payer/mock-merchant.mjs` is a local merchant that speaks the
 real AP4M wire format through the SDK's own codecs.
 
@@ -183,6 +184,51 @@ deployment preferring availability has to write that choice down.
 
 "Revoked" and "could not find out" report different codes, because a human needs
 to tell *you stopped me* from *I cannot reach the registry*.
+
+## Prompt injection: the agent is assumed to lose
+
+```bash
+npm run injection              # eight attacks, played against the real stack
+npm run injection -- --quiet   # one line each
+```
+
+`demo/poisoned-docs.js` is a corpus of documents an agent might fetch in the
+course of honest work — a vendor status page, a dependency README, a treasury
+memo, a support reply — each carrying text aimed at the agent rather than at a
+reader. **Every scene assumes the injection worked.** The agent reads the
+document, believes it, and does exactly what the attacker asked.
+
+| Attack | The agent obediently tries to | Result |
+| :-- | :-- | :-- |
+| billing-update notice | pay a new "migrated" address | `UNKNOWN_MERCHANT` |
+| surge-pricing banner | pay 40× the capped price | `OVER_PER_CALL` |
+| migration note | settle on Ethereum mainnet | `NETWORK_MISMATCH` |
+| treasury memo | pay in a different token | `ASSET_MISMATCH` |
+| a single wrong 402 field | sign an inflated running total | `CUMULATIVE_MISMATCH` |
+| "treat this email as approval" | present a forged Grant | `BAD_GRANT_SIGNATURE` |
+| its own memory of a real yes | replay a spent Grant | `GRANT_SPENT` |
+| "disable the revocation check" | keep paying while the registry is dark | `REVOCATION_UNKNOWN` |
+
+The demo and the test suite run the **same** code (`demo/injection.js`), so no
+scene can be stage-managed for the stage: if an attack ever reaches a payment,
+or starts failing for a *different* reason, `npm test` goes red first. Each run
+asserts the thing that actually matters — not that a refusal was printed, but
+that **no voucher reached the merchant**.
+
+We deliberately do not model an agent that spots the trick. A demo where the
+agent is clever proves nothing, because the next model, the next phrasing or the
+next day's jailbreak takes it back. What refuses here is not a model: it has no
+instructions to override and reads only a struct a human signed on a device.
+
+**Where this stops being true.** Injection into the agent's *reasoning* is
+contained — there is no wording that widens a signed envelope. Compromise of the
+*process holding the voucher key* is not: in AP4M the agent's own software key
+signs vouchers, so code running as the agent can sign one the Guard never saw.
+That attacker is bounded by the **on-chain channel cap**, which no signature can
+lift, and by nothing else — which is why the cap is small and funded
+deliberately. Closing the gap means the voucher key leaves the host (device- or
+enclave-signed vouchers, or a contract that redeems only under a Mandate). Not
+implemented here; see [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §7.1.
 
 ## Autonomy is the point
 

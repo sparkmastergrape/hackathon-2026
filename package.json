@@ -18,7 +18,8 @@
     "gate-d": "node src/payer/gate-d.mjs",
     "compile": "node scripts/compile.mjs",
     "deploy": "node scripts/deploy-registry.mjs",
-    "revoke": "node src/revocation/revoke.mjs"
+    "revoke": "node src/revocation/revoke.mjs",
+    "injection": "node src/demo/injection-scene.mjs"
   },
   "repository": {
     "type": "git",

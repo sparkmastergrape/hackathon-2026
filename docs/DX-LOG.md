@@ -229,6 +229,14 @@ const maximum  = expected + BigInt(accepted.amount);               // what gets 
 **Fix:** we dropped the flag; it was only there as insurance against a hung handle, and the suite does not need it. Worth a note in the Node test-runner docs that the flag can race handle teardown on Windows.
 **Status:** confirmed on Node 24.14.0, Windows 11 · not filed
 
+### D-030 · A fail-closed revocation check does not fail closed on the next call — it fails closed when the cached read expires
+**Expected:** killing the registry read mid-run would stop the very next payment with `REVOCATION_UNKNOWN`. That is how we had described the control, in the README table and out loud.
+**Observed:** it kept paying. Correctly: a successful read had cached "not revoked", and `maxStaleMs` (15s) had not elapsed, so the checker returned `source: cached` and the Guard allowed. Our own design, working exactly as written — and not what the sentence "fails closed" had led us to picture.
+**Why it matters:** the honest claim is narrower than the slogan, and the difference is a 15-second window in which a revoked mandate still spends. The injection scene would have *looked* right either way: break the RPC, watch something refuse. We would have been demonstrating a control with the wrong story attached to it, and a judge who asked "so what happens in the first second?" would have got a wrong answer from us.
+**Fix:** the scene advances an injected clock past `maxStaleMs` rather than only breaking the read, and the test asserts `detail.ageMs > detail.maxStaleMs` — so it pins down *why* the payment stopped, not just that it did. The README's revocation table already stated the freshness window; the scene now matches it.
+**Lesson, and it is general:** a fail-closed control with a cache has two failure modes — "cannot read" and "read too old" — and a demo that only exercises the second while narrating the first is a demo that tests the cache, not the control.
+**Status:** confirmed · our design, not a vendor bug · not filed
+
 ---
 
 ## Live entries
