@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/sparkmastergrape/hackathon-2026#readme",
   "dependencies": {
+    "ethers": "^6.17.0",
     "viem": "^2.57.11",
     "xrpl": "^5.3.0"
   }
