@@ -24,6 +24,7 @@
  */
 
 import { ethers } from 'ethers';
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as http from 'node:http';
 import * as path from 'node:path';
@@ -68,6 +69,9 @@ const BUYER = (process.env.AP4M_AGENT_ADDRESS || '').trim().toLowerCase();
 const SELLER = (process.env.MERCHANT_PAYOUT_ADDRESS || '').trim().toLowerCase();
 const CAP = (process.env.CHANNEL_CAP || '5').trim();
 const PORT = Number(process.env.LIVE_PORT || 8787);
+// Set once the Stream exists; until then an unsigned delivery is accepted so the
+// first test payload can be read and the header name confirmed from it.
+const WEBHOOK_TOKEN = (process.env.QUICKNODE_WEBHOOK_TOKEN || '').trim();
 const BACKFILL_BLOCKS = Number(process.env.LIVE_BACKFILL_BLOCKS || 2000);
 
 // This RPC rejects wide eth_getLogs ranges — 20,000 blocks returns "could not
@@ -104,6 +108,7 @@ const TAPE_LIMIT = 300;
 let head = 0;
 let lastPushAt = 0;
 let lastBalances = null;             // so a browser that joins has dials from the first frame
+let lastStreamAt = 0;                // last QuickNode Streams delivery
 let transport = 'connecting';        // 'wss' | 'polling' | 'connecting'
 let ws = null;
 let reconnectDelay = 1000;
@@ -134,6 +139,7 @@ function status(extra = {}) {
     source: sourceName(transport === 'polling' ? RPC : WSS || RPC),
     head,
     lastPushAgoMs: lastPushAt ? Date.now() - lastPushAt : null,
+    streams: lastStreamAt ? { lastAgoMs: Date.now() - lastStreamAt } : null,
     ...extra,
   };
 }
@@ -369,10 +375,102 @@ function readTrace(request, response) {
   });
 }
 
+/**
+ * QuickNode Streams delivers filtered XRPL EVM logs here, batched, with its own
+ * backfill and reorg handling behind it. Same events the socket pushes, by a
+ * different road: `seen` dedupes across both, so whichever arrives first wins
+ * and the other is dropped. The tape records which road it came by.
+ *
+ * Non-200 makes Streams retry, so this answers 200 even for a payload it did
+ * not understand — a retry of something unparseable is just the same failure
+ * again, more often. What it could not read is logged instead.
+ */
+function readWebhook(request, response) {
+  const chunks = [];
+  let size = 0;
+  let over = false;
+  request.on('data', (chunk) => {
+    size += chunk.length;
+    if (size > 4_000_000 && !over) { over = true; request.destroy(); return; }
+    chunks.push(chunk);
+  });
+  request.on('end', async () => {
+    if (over) return;
+    const raw = Buffer.concat(chunks).toString('utf8');
+
+    // The validation token is a shared secret, so compare it in constant time
+    // and never log it. Header name confirmed against a real delivery below.
+    if (WEBHOOK_TOKEN) {
+      const offered = String(request.headers['x-qn-signature'] ?? request.headers['x-quicknode-signature']
+        ?? request.headers['authorization'] ?? '');
+      const expected = crypto.createHmac('sha256', WEBHOOK_TOKEN).update(raw).digest('hex');
+      const ok = offered.length === expected.length
+        && crypto.timingSafeEqual(Buffer.from(offered), Buffer.from(expected));
+      if (!ok) {
+        console.error('[stream] signature did not verify; payload ignored');
+        console.error('[stream] headers seen:', Object.keys(request.headers).join(', '));
+        response.writeHead(401).end();
+        return;
+      }
+    }
+
+    let payload;
+    try { payload = JSON.parse(raw); } catch {
+      console.error('[stream] body was not JSON');
+      response.writeHead(200).end(); return;
+    }
+    // Streams wraps the dataset differently per configuration, so take the
+    // first array of log-shaped things rather than assuming one envelope.
+    const batch = Array.isArray(payload) ? payload.flat(Infinity)
+      : Array.isArray(payload?.data) ? payload.data.flat(Infinity)
+      : Array.isArray(payload?.logs) ? payload.logs
+      : [];
+    if (!batch.length) {
+      // Print a bounded preview, not the whole body: the first delivery of a new
+      // Stream is the only way to learn the shape it actually sends.
+      console.error('[stream] no logs found; keys:', Object.keys(payload ?? {}).join(', ') || '(none)',
+        '| preview:', raw.slice(0, 400).replace(/\s+/g, ' '));
+      response.writeHead(200).end(); return;
+    }
+    let matched = 0;
+    let fresh = 0;
+    for (const entry of batch) {
+      const log = normalizeStreamLog(entry);
+      if (!log || log.address?.toLowerCase() !== LEDGER.toLowerCase()) continue;
+      if (log.topics?.[0]?.toLowerCase() !== VOUCHER_TOPIC.toLowerCase()) continue;
+      matched += 1;
+      const before = seen.size;
+      try { await onVoucherLog(log, 'stream'); } catch { /* one bad row is not the batch */ }
+      if (seen.size > before) fresh += 1;
+    }
+    lastStreamAt = Date.now();
+    // "matched" is what the batch held; "new" is what this road got here first.
+    // A matched event the socket already delivered is a duplicate, not a loss.
+    console.log(`[stream] batch of ${batch.length}, ${matched} voucher event(s), ${fresh} new`);
+    response.writeHead(200).end();
+  });
+}
+
+/** Streams speaks hex where the socket speaks numbers. */
+function normalizeStreamLog(entry) {
+  if (!entry || typeof entry !== 'object' || !Array.isArray(entry.topics)) return null;
+  const number = (value) => (typeof value === 'string' && value.startsWith('0x')
+    ? Number.parseInt(value, 16) : Number(value));
+  return {
+    address: entry.address,
+    topics: entry.topics,
+    data: entry.data,
+    blockNumber: number(entry.blockNumber ?? entry.block_number),
+    transactionHash: entry.transactionHash ?? entry.transaction_hash,
+    index: number(entry.logIndex ?? entry.log_index ?? entry.index ?? 0),
+  };
+}
+
 const server = http.createServer((request, response) => {
   const url = new URL(request.url, 'http://127.0.0.1');
 
   if (url.pathname === '/trace' && request.method === 'POST') { readTrace(request, response); return; }
+  if (url.pathname === '/webhook' && request.method === 'POST') { readWebhook(request, response); return; }
 
   if (url.pathname === '/stream') {
     response.writeHead(200, {

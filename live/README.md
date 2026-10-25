@@ -37,8 +37,40 @@ socket — and when it is the one producing rows, the chip says `polling
 fallback` and step 4 turns amber. A demo that degrades silently while still
 claiming "live" is the thing judges catch.
 
-`eth_getLogs` over 20,000 blocks returns `could not coalesce error` on this
-RPC; 2,000 answers. The backfill walks in windows and narrows on failure.
+`eth_getLogs` over 20,000 blocks returns `could not coalesce error`. Measured
+again on a quiet endpoint, 10,000 answers and 20,000 still does not, so the
+2,000-block window is deliberately conservative rather than the hard ceiling —
+it survives the event-day load that first produced the error. The backfill
+walks in windows and narrows further on failure.
+
+**QuickNode against the published node**, both measured the same minute:
+
+| | public `rpc.testnet.xrplevm.org` | QuickNode |
+| :-- | --: | --: |
+| `eth_blockNumber`, median of 12 | 51.3 ms | 30.3 ms |
+| worst of 12 | 203.6 ms | 40.1 ms |
+| `eth_getLogs`, 2,000 blocks | 334 ms | 124 ms |
+
+Identical results — 141 events both times. The tail is the part that matters on
+stage: a 204 ms worst case is a visible stutter, and the pane makes a call on
+every new head.
+
+A public WebSocket does exist at `wss://ws.testnet.xrplevm.org`, and it opens.
+It is simply not in the kit: `GET /public/config` publishes an HTTPS `rpcUrl`
+and nothing else, so nothing in the quickstart path pushes. QuickNode is not
+the only way to get a socket here — it is the faster one, and the one this was
+built and measured on.
+
+## Three roads, one set
+
+The socket pushes, QuickNode Streams posts to `POST /webhook`, and a 10-second
+reconcile poll runs underneath both. All three feed one `seen` set, so whichever
+arrives first wins and the others are dropped as duplicates. The tape records
+which road each row came by, in its `via` field: `push`, `stream`, `poll` or
+`backfill`.
+
+`live/QUICKNODE.md` describes the Stream, its server-side filter, and what was
+measured against the published node.
 
 ## Two feeds, and why
 

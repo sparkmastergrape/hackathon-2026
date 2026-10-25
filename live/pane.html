@@ -308,11 +308,15 @@ function markRedemption(row) {
   const cumulative = BigInt(row.cumulative);
   const overCap = cap > 0n && cumulative > cap;
   const nearCap = cap > 0n && !overCap && cumulative * 100n > cap * 80n;
+  // A Streams delivery is a push like the socket's, by a different road, so it
+  // is green too. Only the reconcile poll means we learned late.
+  const pushed = row.via === 'push' || row.via === 'stream';
   hop(4,
-    overCap ? 'fail' : row.via === 'push' && !nearCap ? 'ok' : 'warn',
+    overCap ? 'fail' : pushed && !nearCap ? 'ok' : 'warn',
     overCap ? 'cumulative is over the funded cap'
       : nearCap ? rlusd(cumulative) + ' / ' + state.cap + ' RLUSD — near the cap'
-      : row.via === 'push' ? 'block ' + row.block.toLocaleString()
+      : row.via === 'stream' ? 'block ' + row.block.toLocaleString() + ' — via Streams'
+      : pushed ? 'block ' + row.block.toLocaleString()
       : 'seen by ' + row.via + ', not the socket',
     'measured');
 }
