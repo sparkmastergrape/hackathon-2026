@@ -1,37 +1,93 @@
-# DX log — Ledger docs & SDK experience
+# DX log — Ledger, AP4M and XRPL EVM developer experience
 
-Judged as much as the code, on every track. **Write entries at the moment of friction**, not at the end — the detail that makes an entry useful is gone twenty minutes later.
+Judged as much as the code, on every track. Covers the Ledger DMK, docs, app-ethereum and Speculos; the AP4M SDK and service; the XRPL EVM testnet; and one finding of our own. **Write entries at the moment of friction**, not at the end — the detail that makes an entry useful is gone twenty minutes later.
 
 Format per entry: what I expected → what happened → exact doc URL → screenshot → proposed fix. A filed issue or PR is worth more than a note here; link it.
 
 ---
 
+## Summary — 30 findings, and the five worth your time
+
+Written during the build, not reconstructed after it. Of 30 entries: **26 confirmed**
+against a live page, a shipped package, a device or the chain — one of those
+(D-030) being our own design rather than anyone's bug; 2 confirmed in the type
+definitions with runtime behaviour unverified; 1 a capability gap that is by
+design; and **1 retracted** after re-checking the live page — D-002, kept visible,
+because a log that only lists hits is not a measurement.
+
+Ranked by what we would file first:
+
+| # | Surface | Finding | Effort to fix |
+| :-- | :-- | :-- | :-- |
+| **D-004** | Ledger XRP signer docs | Neither the supported transaction types nor the signed bytes are documented. The reason our XRPL-native path stayed a stretch goal. | a table + one sentence |
+| **D-012** | app-ethereum rendering | A `bytes32` renders as pages of hex no human checks, so **EIP-712 field typing is a security decision**. Measured across 37 device screens; it changed our struct. | a docs section |
+| **D-019 / D-020** | `@ap4m/sdk` | The payer validates scheme, network, asset, `payTo` and ledger — **never the amount** — and the cumulative total it signs is taken from the merchant's own 402 field. A merchant can overstate it and collect the difference while the quoted price looks right. | a warning in the README, and an optional expected-total argument |
+| **D-001** | Ledger XRP signer docs | The page's two derivation-path examples disagree on coin type (0 vs 144) *and* on the `m/` prefix. Copy one and you derive a Bitcoin account. | two characters |
+| **D-003** | DMK how-to | The parameter table documents `deviceAction`; the example beneath it passes `openAppDeviceAction`. | one line |
+
+Two are genuinely good things that are simply undocumented, and we would rather
+they were advertised than fixed: **D-007** (`isBlindSign` / `usedFallback` are
+exposed, so an integrator can honestly tell a user whether what they approved was
+actually clear-signed) and **D-006** (`signTypedData` takes the standard EIP-712
+object verbatim — we found that in `node_modules`, not in the docs).
+
+And one is ours: **D-030**, where breaking the registry read did not stop the next
+payment because a cached read was still fresh. Our own control, working as
+written, with the wrong story attached to it. It is in here because the point of
+a DX log is what the building taught you, not who is to blame.
+
+By surface: **Ledger docs, SDK, app-ethereum and Speculos — 18** (D-001, D-003–D-016,
+D-026–D-028); **AP4M SDK and service — 8** (D-018–D-025); **both sponsors' docs
+together — 1** (D-017, the chain-ID conflict, and the one that would have silently
+broken every signature); **tooling — 1** (D-029); **ours — 1** (D-030);
+**retracted — 1** (D-002).
+
+---
+
 ## Candidates spotted before writing any code
 
-Pre-seeded from reading the docs. **Each needs confirming against the live page before submission** — a doc may have been fixed since.
+Pre-seeded from reading the docs, then **re-checked against the live pages at
+H+30 before submitting**. Three confirmed, one sharper than we thought, and one
+retracted — a doc note we could not reproduce is reported as a retraction rather
+than quietly dropped.
 
-### D-001 · XRP signer: wrong derivation path in `signTransaction` docs
-**Expected:** XRP examples use coin type 144 (`44'/144'/...`).
-**Observed (unconfirmed):** the `signTransaction` text appears to show a Bitcoin-style path.
-**Page:** `/docs/device-interaction/dmk-ts/references/signers/xrp`
-**Fix:** correct the path in the sample. Low effort, high confusion cost for a first-time integrator.
-**Status:** unconfirmed · not filed
+### D-001 · XRP signer: the two derivation-path examples on one page disagree twice
+**Expected:** XRP examples use coin type 144 (`44'/144'/...`), consistently.
+**Observed (re-checked live, 2026-10-25):** the same reference page shows
+- `getAddress`: `"44'/144'/0'/0/0"`
+- `signTransaction`: `"m/44'/0'/0'/0/0"`
 
-### D-002 · DMK `connect` examples inconsistent: `{deviceId}` vs `{device}`
-**Expected:** one consistent shape across pages.
-**Observed (unconfirmed):** both forms appear; `{device}` seems correct.
-**Page:** `/docs/device-interaction/dmk-ts/integration/how_to/dmk`
-**Fix:** make consistent, or document both if both are valid.
-**Status:** unconfirmed · not filed
+Two independent discrepancies in one page: **coin type 0 (Bitcoin) instead of 144**, and an `m/` prefix on one example but not the other — which also leaves it unstated whether the prefix is accepted, ignored or rejected.
+**Why it matters:** copy the `signTransaction` example and you derive a Bitcoin account. The device will sign happily; the address simply is not the user's XRP account, and nothing in the flow says so. The prefix ambiguity then costs a second debugging round.
+**Page:** `/docs/device-interaction/references/signers/xrp`
+**Fix:** `"44'/144'/0'/0/0"` in both examples, and one sentence on whether `m/` is accepted.
+**Status:** **confirmed on the live page 2026-10-25** · not filed — easy PR, two characters and a sentence
 
-### D-003 · `executeDeviceAction` sample key-name mismatch
-**Page:** as above.
-**Status:** unconfirmed · not filed
+### D-002 · RETRACTED — DMK `connect` examples are consistent
+**We expected to find:** `{deviceId}` and `{device}` used interchangeably across pages.
+**Observed on re-check:** not reproduced. The TypeScript guides consistently show `dmk.connect({ device })` with the full discovery object, and the beginner guide says so explicitly. Our pre-seeded note was wrong, and is kept here rather than deleted because a DX log that only lists hits is not a measurement.
+**What is left of it, and it is minor:** discovery yields an object whose `device.id` is displayable but is *not* what `connect` takes, and the Kotlin/KMP docs use `deviceUid` for the same concept. A reader moving between the two will stumble; a one-line note in the TS guide would cover it.
+**Status:** **retracted after live re-check** · nothing to file
 
-### D-004 · XRP signer does not document supported tx types or serialization format
-**Impact:** an integrator cannot tell what will work without reading `app-xrp` source or trial-and-error on a device. This is the single largest gap for anyone building XRPL tooling on the DMK.
-**Fix:** a supported-transaction-type table, and a statement of whether the app signs the raw serialization or the hash-prefixed signing form.
-**Status:** unconfirmed · not filed
+### D-003 · `executeDeviceAction`: the page's parameter table and its own example disagree
+**Expected:** the example to pass the key the parameter list documents.
+**Observed (re-checked live, 2026-10-25):** the parameter list documents `deviceAction`; the example immediately below passes `openAppDeviceAction`:
+```ts
+const { observable, cancel } = await dmk.executeDeviceAction({
+  sessionId,
+  openAppDeviceAction,
+});
+```
+**Why it matters:** from this page alone the correct key is unknowable, and the failure mode is a silent no-op or a type error depending on which you trust. A first-time integrator cannot tell which half of the page is stale.
+**Page:** `/docs/device-interaction/integration/how_to/dmk`
+**Fix:** make the example match the table (or rename the parameter and update both).
+**Status:** **confirmed on the live page 2026-10-25** · not filed — easy PR
+
+### D-004 · XRP signer documents neither the supported transaction types nor what bytes get signed
+**Observed (re-checked live, 2026-10-25):** `transaction` is described only as "The serialized transaction to be signed", typed `Uint8Array`. The page says nothing about which XRP transaction types the app will accept, and nothing about whether it signs the raw serialization or the hash-prefixed signing form. The observable emits `{ r, s, v? }` with no guidance on assembling a submittable blob.
+**Impact:** an integrator cannot tell what will work without reading `app-xrp` source or trial-and-error against a device. This is the single largest gap for anyone building XRPL tooling on the DMK, and it is why our XRPL-native path stayed a stretch goal (ARCHITECTURE §4.3) — we could not bound the unknown inside 36 hours.
+**Fix:** a supported-transaction-type table; one sentence on the signed bytes; a worked example assembling `TxnSignature` from `r`/`s`.
+**Status:** **confirmed on the live page 2026-10-25** · not filed — **highest-value XRP doc gap**
 
 ### D-005 · No XRPL Clear Signing
 Not a doc bug — a capability gap, documented here because it directly shaped our architecture (see ARCHITECTURE §3, §5.2). Worth writing up as a proposal: a metadata schema for XRPL transaction previews, analogous to ERC-7730.

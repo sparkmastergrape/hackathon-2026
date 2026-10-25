@@ -19,7 +19,8 @@
     "compile": "node scripts/compile.mjs",
     "deploy": "node scripts/deploy-registry.mjs",
     "revoke": "node src/revocation/revoke.mjs",
-    "injection": "node src/demo/injection-scene.mjs"
+    "injection": "node src/demo/injection-scene.mjs",
+    "verify-claims": "node scripts/verify-claims.mjs"
   },
   "repository": {
     "type": "git",
