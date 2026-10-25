@@ -217,13 +217,15 @@ OpenAPI-generated clients.
 
 ## What's built in this repo
 
-All three Mastercard legs of the suggested build below are implemented and
-dry-run tested: [`demo/agent-mandate.mjs`](../demo/agent-mandate.mjs)
+The whole suggested build below is implemented and dry-run tested:
+[`demo/agent-mandate.mjs`](../demo/agent-mandate.mjs)
 (`npm run demo:mandate`), on top of
 [`mastercard/consent.mjs`](../mastercard/consent.mjs),
-[`mastercard/bpc.mjs`](../mastercard/bpc.mjs) and
-[`mastercard/send.mjs`](../mastercard/send.mjs). It runs without credentials
-and prints the exact requests a live run would send.
+[`mastercard/bpc.mjs`](../mastercard/bpc.mjs),
+[`mastercard/send.mjs`](../mastercard/send.mjs),
+[`mastercard/bin.mjs`](../mastercard/bin.mjs) and
+[`mastercard/fx.mjs`](../mastercard/fx.mjs). It runs without credentials and
+prints the exact requests a live run would send.
 
 Things worth knowing that only showed up once the specs were read:
 
@@ -250,6 +252,23 @@ Things worth knowing that only showed up once the specs were read:
 - **Pass `decline_details=true` on a disbursement.** A declined payout then
   returns 201 with the full transaction and the network response code, instead
   of a bare 402. In a demo a visible decline beats an exception.
+- **BIN Lookup is a real payout preflight, not decoration.** The account-range
+  response carries `moneySendDomesticIndicator` and
+  `moneySendCrossBorderIndicator` (`Y`/`N`), plus `localUse`,
+  `authorizationOnly`, `nonReloadableIndicator` and the Faster Funds
+  indicators. Read them and you know whether a Send disbursement can succeed
+  before you make the call. `payoutPreflight()` does exactly that, and fails
+  closed when no range matches. Also note `accountRange` is typed as a
+  *number* (8-10 digits of the PAN), not a string.
+- **Currency Conversion reports errors in band.** A failed lookup is an
+  HTTP 200 whose `data` carries `errorCode` and `errorMessage` — so a naive
+  client reads a failure as a rate. `unwrap()` raises instead. Rates are
+  published daily and effective for 24 hours; `GET /conversion-rate-issued`
+  tells you whether today's are out yet. EEA issuers need the Enhanced
+  Currency Conversion Calculator, not this one.
+- **Watch the two amount conventions.** Send wants minor-unit *strings*
+  (`"1850"`); the Currency Conversion Calculator wants major-unit *numbers*
+  (`18.5`). Crossing them is a 100x error in either direction.
 - **Consent Management needs JWE.** Three of its six endpoints
   (`create-consents`, `start-authentication`, `verify-authentication`) are
   marked `x-mastercard-api-encrypted: true`: the whole body is encrypted into a
@@ -282,8 +301,11 @@ A three-leg demo that uses only self-serve sandbox surfaces:
    the published [test PANs](./mastercard-test-cards.md), as a Business
    Disbursement (`payment_type: BDB`), with the mandate's per-transaction
    ceiling checked before the call. The on-ledger XRPL/x402 leg this repo
-   already has sits alongside it. BIN Lookup and the Currency Conversion
-   Calculator decorate the decision the agent makes.
+   already has sits alongside it.
+4. **Preflight** — BIN Lookup identifies the recipient's instrument and
+   whether its issuer supports MoneySend at all; the Currency Conversion
+   Calculator prices the payout in the card's own billing currency. Two cheap
+   calls that turn the payout from a hopeful POST into a decision.
 
 Then name Agent Suite for Merchants out loud, and say this is the settlement
 layer that belongs under it.

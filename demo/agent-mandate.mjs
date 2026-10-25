@@ -13,9 +13,12 @@
 //   4. The mandate's limits become network-enforced spend controls on a fresh
 //      virtual card. The agent gets the VCN; the real card stays untouched.
 //   5. An authorization report is the agent's spend history.
-//   6. The merchant gets paid out to a card via Mastercard Send, within the
+//   6. BIN Lookup says what the merchant's card actually is, and whether its
+//      issuer supports MoneySend at all; the Currency Conversion Calculator
+//      says what the payout will cost in the merchant's own currency.
+//   7. The merchant gets paid out to a card via Mastercard Send, within the
 //      same mandate ceiling the virtual card enforces.
-//   7. Revoking the consent suspends the card. The mandate is the kill switch.
+//   8. Revoking the consent suspends the card. The mandate is the kill switch.
 //
 // Dry run prints the exact HTTP request each step would send, so the flow is
 // reviewable before any credential exists.
@@ -31,6 +34,14 @@ import {
   minorUnits,
   HAPPY_PATH_REFERENCE,
 } from '../mastercard/send.mjs';
+import {
+  createBinClient,
+  accountRangeFromPan,
+  firstRange,
+  describeBin,
+  payoutPreflight,
+} from '../mastercard/bin.mjs';
+import { createFxClient, unwrap, rateIsIssued, describeConversion } from '../mastercard/fx.mjs';
 import { hasEncryptionConfigured } from '../mastercard/jwe.mjs';
 
 const args = new Set(process.argv.slice(2));
@@ -69,6 +80,8 @@ const PAYOUT = {
 const consent = createConsentClient({ dryRun });
 const bpc = createBpcClient({ dryRun });
 const send = createSendClient({ dryRun });
+const bin = createBinClient({ dryRun });
+const fx = createFxClient({ dryRun });
 
 let step = 0;
 function heading(title) {
@@ -156,6 +169,53 @@ async function main() {
       fromDate: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
       toDate: now.toISOString(),
     }),
+  );
+
+  heading("Preflight the payout: what is this card? (BIN Lookup)");
+  const accountRange = accountRangeFromPan(PAYOUT.merchantCard.pan);
+  console.log(`Looking up account range ${accountRange} (first 8 digits of the merchant's PAN).`);
+  const binResponse = report(await bin.searchByAccountRange(accountRange));
+  const range = firstRange(binResponse);
+  if (range) console.log(`\nCard: ${describeBin(range)}`);
+
+  // The useful part: the issuer's MoneySend indicators say whether the Send
+  // disbursement can succeed at all. Checking here turns a network decline
+  // into a decision the agent makes before spending the call.
+  const crossBorder = Boolean(range?.country?.alpha3) && range.country.alpha3 !== 'USA';
+  const preflight = payoutPreflight(range, { crossBorder, originationCountry: 'USA' });
+  if (range) {
+    console.log(`MoneySend ${crossBorder ? 'cross-border' : 'domestic'}: ${preflight.ok ? 'supported' : 'NOT supported'}`);
+    for (const reason of preflight.reasons) console.log(`  blocker: ${reason}`);
+    for (const warning of preflight.warnings) console.log(`  note: ${warning}`);
+  } else {
+    console.log(
+      '\nNo BIN record in a dry run, so nothing to check. A live run decides here\n' +
+        'whether to attempt the payout at all.',
+    );
+  }
+
+  heading('Price the payout in the merchant\'s currency (Currency Conversion)');
+  const billingCurrency = range?.billingCurrencyDefault ?? 'EUR';
+  console.log(
+    `The card bills in ${billingCurrency}; the payout is in ${PAYOUT.currency}. ` +
+      `Mastercard's\npublished rate is what will land on the statement.`,
+  );
+  const issued = report(await fx.isRateIssued());
+  if (issued !== undefined) {
+    console.log(`\nToday's rates published: ${rateIsIssued(issued) ? 'yes' : 'not yet'}`);
+  }
+  const rate = report(
+    await fx.getConversionRate({
+      transCurr: PAYOUT.currency,
+      crdhldBillCurr: billingCurrency,
+      transAmt: PAYOUT.amount,
+      bankFee: 0,
+    }),
+  );
+  if (rate !== undefined) console.log(`\nConversion: ${describeConversion(unwrap(rate))}`);
+  console.log(
+    '\nNote: this API reports failures in band — an HTTP 200 whose data carries\n' +
+      'errorCode. unwrap() raises those rather than letting them read as a rate.',
   );
 
   heading('Pay the merchant out to a card (Mastercard Send)');

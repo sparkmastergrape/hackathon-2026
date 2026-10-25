@@ -86,18 +86,25 @@ The modules behind it:
 - [`mastercard/send.mjs`](mastercard/send.mjs) — Mastercard Send Disbursements
   client, plus `merchantPayoutRequest()`, `panUri()` and `minorUnits()` for
   pushing a payout to a card.
+- [`mastercard/bin.mjs`](mastercard/bin.mjs) — BIN Lookup client, plus
+  `payoutPreflight()`, which reads the issuer's MoneySend indicators and says
+  whether a Send payout can succeed before you spend the call.
+- [`mastercard/fx.mjs`](mastercard/fx.mjs) — Currency Conversion Calculator
+  client, plus `unwrap()`, which raises the errors this API reports in band.
 - [`mastercard/jwe.mjs`](mastercard/jwe.mjs) — JWE payload encryption, which
   Consent Management requires on three of its six endpoints.
 - [`mastercard/request.mjs`](mastercard/request.mjs) — per-service base URLs,
   query and idempotency handling, error-envelope parsing, dry run.
 
-Note the three hosts — each service family has its own:
+Each service family has its own sandbox base URL:
 
-| Service | Sandbox host |
+| Service | Sandbox base URL |
 | --- | --- |
 | Consent Management | `sandbox.api.mastercard.com/openapis/authentication` |
 | Business Payment Controls | `sandbox.apiedge.mastercard.com/commercial` |
 | Send Disbursements | `sandbox.api.move.mastercard.com/send/static` |
+| BIN Lookup | `sandbox.api.mastercard.com/bin-resources` |
+| Currency Conversion | `sandbox.api.mastercard.com/settlement/currencyrate` |
 
 ## Tests
 
