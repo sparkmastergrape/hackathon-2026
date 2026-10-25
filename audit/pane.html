@@ -131,7 +131,8 @@
         <div style="flex:1 1 300px;min-width:0">
           <div id="payees"></div>
           <p class="note" style="margin:18px 0 0;padding-top:14px;border-top:1px solid var(--line)">
-            Read from the public ledger. Nothing here was reported by the agent &mdash;
+            Read from the ledger over <span style="font-family:var(--mono)" id="provider">&mdash;</span>.
+            Nothing here was reported by the agent &mdash;
             <span style="font-family:var(--mono)">audit/emit_from_ledger.py</span> queries the same
             <span style="font-family:var(--mono)">account_tx</span> anyone can.
           </p>
@@ -254,9 +255,11 @@ function render(doc, sourceNote) {
     ['Events in file', ev.length + '  (' + [...new Set(ev.map(e => e.stage))].length + ' stages)'],
     ['First and last event', times.length ? times[0] + ' → ' + times[times.length - 1] : '—'],
     ['Counterparties', String(payeeRows.length)],
-    ['Source', sourceNote]
+    ['Read from', doc.source || 'unrecorded'],
+    ['File', sourceNote]
   ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
 
+  document.getElementById('provider').textContent = doc.source || 'an unrecorded node';
   document.getElementById('payee-sub').textContent =
     payeeRows.length + ' counterparties across ' + settled.length + ' settled payments';
   document.getElementById('payees').innerHTML = payeeRows.map(([addr, total]) => `

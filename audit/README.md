@@ -9,6 +9,30 @@ py -m http.server 8800
 # http://localhost:8800/audit/pane.html
 ```
 
+## Which node it reads
+
+QuickNode, when `XRPL_RPC_URL` is set. The emitter reads it from the
+environment, then from `.env`, then from `prep/.env`, and falls back to the
+public testnet node when none is set. The same variable name
+`prep/verify_endpoints.py` already uses.
+
+```
+XRPL_RPC_URL=https://<your-endpoint>.quiknode.pro/<token>/
+```
+
+**That URL is a credential.** QuickNode puts the token in the path, so anyone
+holding the URL can spend your quota. It belongs in `.env`, which is
+gitignored. The emitter never prints it and never writes it into
+`events.json`: it records the provider name in a `source` field, and the pane
+shows that under *Read from*. If you ever see the endpoint in output or in a
+committed file, something has regressed.
+
+Both branches were exercised. The fallback and the configured-node path each
+returned the same 19 payments and 33 events. **The QuickNode branch itself has
+not been run** — no endpoint was available in this checkout, because `.env`
+files did not travel with the move. The only untested part is whether your
+endpoint answers; the selection logic around it is tested.
+
 A browser will not read a sibling file over `file://`, so the folder has to be
 served. The pane says so itself when the fetch fails.
 
