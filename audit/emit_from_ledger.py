@@ -5,8 +5,15 @@ Standard library only, so it runs without the demo's virtualenv:
     py audit/emit_from_ledger.py
 
 Nothing here is reported to us by the agent. Every event below is built from
-`account_tx` on a public testnet node, which anyone can query, and every
-on-ledger event carries the transaction hash that produced it.
+`account_tx` on an XRPL node, and every on-ledger event carries the
+transaction hash that produced it, so a reader can check any row against the
+public explorer without taking this file's word for it.
+
+The node is QuickNode when `XRPL_RPC_URL` is set, in the environment or in a
+`.env` this project already uses, and the public testnet node otherwise. A
+QuickNode URL carries its token in the path, so it is a credential: it never
+appears in this file, in the output, or in `events.json`. The provider name is
+recorded instead, which is the part a reader needs.
 
 Two kinds of event come out of this, and they are marked differently on
 purpose:
@@ -30,7 +37,7 @@ import sys
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-RPC = os.environ.get("XRPL_RPC", "https://s.altnet.rippletest.net:51234/")
+PUBLIC_RPC = "https://s.altnet.rippletest.net:51234/"
 NETWORK = "xrpl:1"
 EXPLORER = "https://testnet.xrpl.org/transactions/"
 
@@ -42,6 +49,43 @@ AGENT_ACCOUNT = "rf92bZ3SUF4JjcfpknzNC7crVtjHLbH2vz"
 RIPPLE_EPOCH = datetime(2000, 1, 1, tzinfo=timezone.utc)
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "events.json")
+
+
+def load_env():
+    """Read XRPL_RPC_URL from the environment, else from a .env this project
+    already uses. Values already in the environment win."""
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for name in (".env", os.path.join("prep", ".env")):
+        path = os.path.join(here, name)
+        if not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                os.environ.setdefault(
+                    key.strip(), value.strip().strip('"').strip("'")
+                )
+
+
+def endpoint():
+    """The node to read. QuickNode when configured, the public node otherwise.
+
+    A QuickNode URL carries its token in the path, so it is a credential: it
+    lives in .env, which is gitignored, and this script never prints it. The
+    provider name is printed instead, which is what a reader needs to know.
+    """
+    load_env()
+    url = (os.environ.get("XRPL_RPC_URL") or os.environ.get("XRPL_RPC") or "").strip()
+    if url:
+        provider = "QuickNode" if "quiknode" in url.lower() else "configured node"
+        return url, provider
+    return PUBLIC_RPC, "public testnet node (no XRPL_RPC_URL set)"
+
+
+RPC, PROVIDER = endpoint()
 
 
 def rpc(method, params):
@@ -170,13 +214,14 @@ def build():
         "schema": "agent-audit/1",
         "run_id": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") + "/ledger",
         "network": NETWORK,
+        "source": PROVIDER,
         "events": events,
     }
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump(doc, fh, indent=2)
         fh.write("\n")
 
-    print(f"read {RPC}")
+    print(f"read via {PROVIDER}")
     print(f"counted {counted} outbound XRP payments, wrote {len(events)} events")
     if skipped_iou:
         print(f"skipped {skipped_iou} issued-currency payments (no drops amount)")
