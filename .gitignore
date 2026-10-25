@@ -184,3 +184,8 @@ live/tape.jsonl
 live/demo.log
 .live-demo-state/
 .live-merchant-state-*/
+
+# Retired and probe merchant/agent stores: sqlite + locks, run state not source.
+# The dated one is a store stranded by a pre-fix start; kept on disk, never committed.
+.x402-merchant-state.*/
+.gate-*-merchant-state*/
