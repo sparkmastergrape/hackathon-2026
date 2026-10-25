@@ -19,6 +19,8 @@
   },
   "homepage": "https://github.com/sparkmastergrape/hackathon-2026#readme",
   "dependencies": {
+    "@ap4m/sdk": "https://hackathon.ap4m.build/sdk/ap4m-sdk.tgz",
+    "ethers": "^6.17.0",
     "viem": "^2.57.11",
     "xrpl": "^5.3.0"
   }
