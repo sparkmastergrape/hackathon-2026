@@ -18,11 +18,31 @@ const { signIn, requestChannel, getChannelState, redeemVoucher, settle, closeCha
 
 const API = (process.env.AP4M_API_URL || 'https://hackathon.ap4m.build').replace(/\/+$/, '');
 const TEAM_NAME = process.env.TEAM_NAME;
-const CHANNEL_CAP = process.env.CHANNEL_CAP || '5';
-const PAYMENT_RLUSD = process.env.PAYMENT_RLUSD || '0.01';
+const CHANNEL_CAP = rlusdAmount('CHANNEL_CAP', process.env.CHANNEL_CAP, '5');
+const PAYMENT_RLUSD = rlusdAmount('PAYMENT_RLUSD', process.env.PAYMENT_RLUSD, '0.01');
 
 if (!process.env.AGENT_PRIVATE_KEY) throw new Error('AGENT_PRIVATE_KEY is not set');
 if (!TEAM_NAME) throw new Error('TEAM_NAME is not set');
+
+/**
+ * A bare decimal number of RLUSD.
+ *
+ * Both values are printed next to the word RLUSD and then used as amounts:
+ * CHANNEL_CAP goes to requestChannel as `capRlusd`, and PAYMENT_RLUSD goes to
+ * ethers.parseUnits. Set either to "5 RLUSD" and the log reads
+ * "5 RLUSD RLUSD", which is the harmless half — the value is then sent on as
+ * a cap, or handed to parseUnits, which fails with a message about the ethers
+ * internals rather than about the variable. So it is refused here instead.
+ */
+function rlusdAmount(name, raw, fallback) {
+  const value = String(raw ?? '').trim() || fallback;
+  if (!/^\d+(\.\d+)?$/.test(value)) {
+    throw new Error(
+      `${name} must be a bare decimal number of RLUSD, not ${JSON.stringify(value)}. ` +
+      'Write 5, not "5 RLUSD".');
+  }
+  return value;
+}
 
 const config = await (await fetch(`${API}/public/config`)).json();
 const RPC_URL = process.env.RPC_URL || config.network.rpcUrl;

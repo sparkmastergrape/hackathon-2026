@@ -30,10 +30,29 @@ const AP4M_API_URL   = process.env.AP4M_API_URL   || 'https://hackathon.ap4m.bui
 //  ^ Base URL for the AP4M service, from the hackathon staff.
 
 const CHANNEL_ID     = process.env.CHANNEL_ID     || '';
-const CHANNEL_CAP    = process.env.CHANNEL_CAP    || '5';
+const CHANNEL_CAP    = rlusdAmount('CHANNEL_CAP', process.env.CHANNEL_CAP, '5');
 const PAYMENT_LEDGER = process.env.PAYMENT_LEDGER || '0xcAB42800A5ECF0D253Fa2581Bb3334B4DAEfaE91';
 //  ^ Leave CHANNEL_ID empty to open a new Channel with a CHANNEL_CAP RLUSD spending limit,
 //    or set it to an open Channel from your participant portal.
+
+/**
+ * A bare decimal number of RLUSD.
+ *
+ * CHANNEL_CAP is printed as `${CHANNEL_CAP} RLUSD limit` and then reaches
+ * requestChannel, which posts `cap_rlusd: String(options.capRlusd)` to the
+ * service. Set CHANNEL_CAP="5 RLUSD" and the log reads "5 RLUSD RLUSD limit";
+ * that is the visible half. The same string is then sent as the spending cap.
+ * Refuse it here, at startup, where the message can name the variable.
+ */
+function rlusdAmount(name, raw, fallback) {
+  const value = String(raw ?? '').trim() || fallback;
+  if (!/^\d+(\.\d+)?$/.test(value)) {
+    throw new Error(
+      `${name} must be a bare decimal number of RLUSD, not ${JSON.stringify(value)}. ` +
+      'Write 5, not "5 RLUSD".');
+  }
+  return value;
+}
 //    PAYMENT_LEDGER and the RPC URL default to the service's published configuration.
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
