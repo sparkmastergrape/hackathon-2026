@@ -1,0 +1,17 @@
+{
+  "name": "speculos-xrp-signer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DMK -> Speculos -> XRP signer kit. CommonJS on purpose: DMK 1.11's ESM build is broken.",
+  "scripts": {
+    "address": "node get-address.cjs",
+    "sign": "node sign-payment.cjs"
+  },
+  "dependencies": {
+    "@ledgerhq/device-management-kit": "^1.11.0",
+    "@ledgerhq/device-signer-kit-xrp": "^0.3.0",
+    "@ledgerhq/device-transport-kit-speculos": "^1.3.0",
+    "rxjs": "^7.8.2",
+    "xrpl": "^5.3.0"
+  }
+}

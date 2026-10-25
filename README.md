@@ -241,7 +241,7 @@ that last case.
 | `ledger-approver/` | Policy engine, gate service, React approver app, tests |
 | `filings/` | Six DX defect filings and device evidence |
 | `vi-replay/` | Verifiable-intent replay fixtures and the audit validator |
-| `context-workspace/` | The staged pipeline the filings were produced through |
+| `workspace/` | The ICM workspace. Two tracks: `tracks/build` and `tracks/filing`, the pipeline the filings were produced through |
 | `ap4m-agent.cjs`, `run-ap4m.cjs`, `close-channel.cjs` | The AP4M payment agent and its runner |
 | `predemo.mjs`, `verify-wallets.mjs`, `verify-receipt-onchain.mjs` | Pre-demo and verification checks |
 | `receipt-trail.html`, `walkthrough.html` | The receipt evidence page and the demo walkthrough |
