@@ -65,8 +65,14 @@ const LEDGER = (process.env.PAYMENT_LEDGER || '0xcAB42800A5ECF0D253Fa2581Bb3334B
 const RLUSD = (process.env.RLUSD_TOKEN || '0x27b57a9D0b8d24EB97259c4E2279e45255e016f3').trim();
 const VAULT = (process.env.ESCROW_VAULT || '0x83DD9cD010eb46e96eceF8F7eB0a18f7845AaBC0').trim();
 
-const BUYER = (process.env.AP4M_AGENT_ADDRESS || '').trim().toLowerCase();
-const SELLER = (process.env.MERCHANT_PAYOUT_ADDRESS || '').trim().toLowerCase();
+// Public testnet addresses, the same two dispatch/pane/pane.mjs falls back to.
+// Without them a clone with no .env renders two blank wallet cards, which
+// reads as a broken pane rather than an unconfigured one. Nothing secret:
+// these are on the ledger already.
+const BUYER = (process.env.AP4M_AGENT_ADDRESS
+  || '0x37f2f4166646ea3cea94bb37babd88a01f52a7a2').trim().toLowerCase();
+const SELLER = (process.env.MERCHANT_PAYOUT_ADDRESS
+  || '0xff9395aa0918a789b4dc40e7cf147a73c92fcbf8').trim().toLowerCase();
 const CAP = (process.env.CHANNEL_CAP || '5').trim();
 const PORT = Number(process.env.LIVE_PORT || 8787);
 // Set once the Stream exists; until then an unsigned delivery is accepted so the
