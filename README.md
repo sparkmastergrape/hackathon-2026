@@ -11,6 +11,12 @@ Built at the Ledger x XRPL hackathon (XRPL Commons / XRP Ledger Foundation / Swe
 New York, 24–25 October 2026), using the Mastercard AP4M payment kit on the XRPL EVM
 sidechain.
 
+**Entered under Track 02 — Agentic Finance.** The agent that reads a 402, decides to pay,
+signs and settles without a person in the path is the submission. The Ledger device gate
+and the seven filings sit underneath that entry rather than beside it: the gate is what
+makes an unattended payer safe to leave running, and the filings are the defects that
+turned up while building it. One track, one entry.
+
 Testnet only. Every key in this repository is a testnet key.
 
 ## The idea
@@ -41,7 +47,7 @@ a fresh sequence and fee. The browser never gets to choose what the device signs
 
 ## What is in here
 
-Two deliverables that share a repository and a set of measurements.
+Three deliverables that share a repository and a set of measurements.
 
 ### 1. `ledger-approver/` — the human-approval gate
 
@@ -65,7 +71,10 @@ its known limits.
 
 ### 2. `filings/` — developer-experience defects, with receipts
 
-Track 01 states that bug reports count and that DX feedback is judged as much as code.
+The Track 01 brief is where the rule is written down — bug reports count, and DX feedback
+is judged as much as code. That is not the track being entered, but it is the right
+standard, so the filings are held to it.
+
 Seven defects were found while building, each with a reproduction. Four belong to Ledger,
 three to Mastercard. The two sets do not compete for the same slot, so they are ranked
 within each sponsor rather than against each other.
@@ -86,7 +95,7 @@ with beats a better filing that needs careful handling*:
 **Two are filed upstream, against Ledger's own repository** (2026-10-25, both open):
 `03` as a documentation PR fixing the `signTransaction` derivation-path example, and `01`
 as an issue reporting that the developer portal serves XRP signer docs from before the
-2026-10-22 fix. Track 01 says bug reports and PRs count; these are that, in Ledger's
+2026-10-22 fix. Bug reports and PRs are what the brief asks for; these are that, in Ledger's
 issue tracker rather than in a slide. `filings/SUBMISSIONS.md` tracks the rest.
 
 `filings/evidence/` holds full device screen sets from Flex, Stax and Apex P (28 files),
@@ -99,6 +108,16 @@ names no testnet identifier anywhere. That can route a team onto the wrong netwo
 it is a gap, and filing it as an error invites a one-line refusal from anyone who checks
 mainnet. Both chain IDs are measured: `eth_chainId` against
 `https://rpc.testnet.xrplevm.org` returns `0x161c28` (1449000).
+
+### 3. `mastercard/` — the Mastercard track
+
+The same idea carried onto card rails: a human spend mandate in Consent Management
+becomes network-enforced spend controls on a Business Payment Controls virtual card, the
+merchant is paid out to a card through Mastercard Send, and revoking the mandate kills
+the card. Five service clients, OAuth 1.0a signing, JWE payload encryption, and a
+dry-run demo that prints the exact HTTP each step would send.
+
+Detail is in [The Mastercard track](#the-mastercard-track) below.
 
 ## Status
 
@@ -176,6 +195,13 @@ chain-of-custody, including the claim-ID matching, is in
 | Agent redeems a signed voucher (`redeemVoucher`, 147,087 gas) | `0xe39c8fb5b1868c94db686f89a614710bcc884c16cba8cc5fe9484a99cc5e0bf6` |
 | Vault pays the merchant 0.01 RLUSD | `0x23c4beb9264b7ee3f0e2ef81182c1605f8d7045954aa1c750386e6e243389a6c` |
 
+**Two more on this chain, not in the eight counted above.** The x402 run of 2026-10-24
+landed redemption `0xbf36acf4f215a0b8205f8ba917e1a85ee51f5871b6ea7745124fff98a3b77231`
+and settlement `0xc0d35a87a865475084143258b3040d51e69b11e86b4a593df896651b6cf91e33`,
+with the RLUSD payout read by `balanceOf` before and after. They are recorded in
+[`X402.md`](X402.md) rather than in the tables above, which hold the two halves of the
+project as first measured.
+
 ### The redemption event — what to open
 
 AP4M's judging asks for a `VoucherRedeemed` event on the explorer at the `PaymentLedger`
@@ -243,21 +269,100 @@ Live, on testnet, no recorded output. `npm run predemo` is the gate on starting 
 it checks the wallets, the registration and the gas, and exits non-zero if the run would
 fail. Do not skip it in front of an audience.
 
+The 402 purchase needs two terminals: the merchant binds `127.0.0.1` and stays running.
+
 | # | Step | Command | What the room sees |
 |---|---|---|---|
 | 1 | Pre-flight | `npm run predemo` | exit 0 — wallets funded, agent registered |
-| 2 | Agent pays, unattended | `npm run demo` | channel opened, voucher signed, settled, closed |
-| 3 | Proof, from a public node | `node verify-receipt-onchain.mjs <hash>` | the redemption and the RLUSD payout, read from chain |
-| 4 | The boundary | `ledger-approver/` — seed a large payment | it stops; approve it on the device |
+| 2 | Merchant, paywalled | `npm run x402:merchant` | one resource behind HTTP 402, priced 0.05 RLUSD |
+| 3 | Agent reads the 402 and pays | `npm run x402:agent` | 402 → price read → decides → voucher signed → resource delivered |
+| 4 | Proof, from a public node | `node verify-receipt-onchain.mjs <hash>` | the redemption and the RLUSD payout, read from chain |
+| 5 | The ceiling refuses | a merchant priced above the ceiling, then `node x402-agent.mjs <operation>` | exit 3, no voucher signed, chain unchanged |
+| 6 | The boundary | `ledger-approver/` — seed a large payment | it stops; approve it on the device |
 
-Steps 1–3 are the autonomy story and need no person beyond pressing return. Step 4 is the
-exception path, and is the only point a human appears.
+Step 3 is the judged claim in one command: the agent reads the 402, chooses to pay, signs
+and submits, with nobody in the path. Step 5 is that same autonomy declining. Steps 1–5
+need no person beyond pressing return. Step 6 is the exception path, and is the only
+point a human appears.
 
-**Measured** for steps 1–3: the hashes in [Transactions](#transactions) came from this
-sequence. **Not measured:** the x402 leg (`example-x402-agent.mjs` with
-`example-x402-merchant.mjs`) is where the literal 402 response appears, and it has not
-been run end to end from this checkout. If the demo needs to show the 402 itself rather
-than the payment it causes, rehearse that pair first.
+`npm run demo` (`run-ap4m.cjs`) is the same payment without the HTTP layer, and is the
+shorter path if the room does not need to see the 402 itself. The hashes in
+[Transactions](#transactions) came from that sequence.
+
+**Measured.** Both halves of the x402 story — the purchase and the refusal — have been
+run and read back from chain rather than from the agent's own output:
+
+- Steps 2 and 3, 2026-10-24, one pass and no retries, verified by step 4: redemption
+  `0xbf36acf4f215a0b8205f8ba917e1a85ee51f5871b6ea7745124fff98a3b77231`, settlement
+  `0xc0d35a87a865475084143258b3040d51e69b11e86b4a593df896651b6cf91e33`, payout RLUSD
+  0.13 → 0.18 read by `balanceOf`. The `claimId` the agent printed is the one in the
+  `VoucherRedeemed` event. Written up in [`X402.md`](X402.md).
+- Step 5, 2026-10-25, at a wide margin and again one base unit from the ceiling, with a
+  before/after chain witness showing zero new claim IDs and a cumulative delta of zero.
+  Both refusal layers hold independently — the agent's own check, and `maximumAmount`
+  inside the SDK with that pre-check skipped. The exactly-equal case is the control and
+  buys, which is what makes the comparison `>` and the ceiling inclusive. Written up in
+  [`refusal-case.md`](workspace/tracks/build/stages/03-prove/output/refusal-case.md).
+
+**Not measured: the timing.** This is six steps rather than four and has not been run
+end to end against a clock. If three minutes is a hard limit, steps 1, 3 and 4 are the
+spine; 2 is setup, and 5 and 6 are additions.
+
+**Two traps before running it live**, both found the hard way and both detailed in
+`X402.md`: give every purchase a new `operation` name, and do not delete
+`.x402-merchant-state/` while a payment row is incomplete — the retained payment is the
+only way the agent gets what it already paid for. The vendor's own sample pair,
+`example-x402-agent.mjs` and `example-x402-merchant.mjs`, is kept unmodified for
+reference and has not been run from this checkout.
+
+## The Mastercard track
+
+A human spend mandate becomes network-enforced spend controls on a virtual card, the
+merchant is paid out to that card, and revoking the mandate kills it.
+
+**Measured.** `npm test` passes 82 tests with no network and no credentials. They check
+that the request bodies match the published OpenAPI specs: required fields, `negate`
+flags, ISO-4217 numeric currency codes, offset-bearing timestamps, the `yyyy-MM` expiry
+regex, and the 22-character statement-descriptor limit.
+
+**Not done.** Nothing here has run against Mastercard's sandbox. `npm run demo:mandate`
+is a dry run that prints the exact HTTP each step would send; the `--live` path needs a
+Developer Dashboard project, a `.p12`, and the encryption keys, none of which exist yet.
+So the flow is reviewable but unproven, and it has landed no transaction — the
+eligibility evidence is the XRPL side, above.
+
+```bash
+npm run demo:mandate            # dry run, prints every request
+node demo/agent-mandate.mjs --live   # needs credentials in .env
+npm run mcp:mastercard          # Mastercard's agent toolkit as an MCP server
+```
+
+The modules:
+
+| Module | What it does |
+|---|---|
+| [`mastercard/consent.mjs`](mastercard/consent.mjs) | Consent Management, plus `agentSpendMandate()` encoding an agent's limits into a consent record |
+| [`mastercard/bpc.mjs`](mastercard/bpc.mjs) | Business Payment Controls, plus `spendControlsFromMandate()` turning those limits into a spec-valid `inControlRules` |
+| [`mastercard/send.mjs`](mastercard/send.mjs) | Send Disbursements, plus `merchantPayoutRequest()`, `panUri()`, `minorUnits()` |
+| [`mastercard/bin.mjs`](mastercard/bin.mjs) | BIN Lookup, plus `payoutPreflight()` — reads MoneySend indicators before spending the call |
+| [`mastercard/fx.mjs`](mastercard/fx.mjs) | Currency Conversion Calculator, plus `unwrap()` for in-band errors |
+| [`mastercard/jwe.mjs`](mastercard/jwe.mjs) | JWE payload encryption, required on three of Consent Management's six endpoints |
+| [`mastercard/sign.mjs`](mastercard/sign.mjs), [`request.mjs`](mastercard/request.mjs) | OAuth 1.0a signed fetch; base URLs, idempotency, error envelopes, dry run |
+
+Sandbox base URLs, one per service family:
+
+| Service | Sandbox base URL |
+|---|---|
+| Consent Management | `sandbox.api.mastercard.com/openapis/authentication` |
+| Business Payment Controls | `sandbox.apiedge.mastercard.com/commercial` |
+| Send Disbursements | `sandbox.api.move.mastercard.com/send/static` |
+| BIN Lookup | `sandbox.api.mastercard.com/bin-resources` |
+| Currency Conversion | `sandbox.api.mastercard.com/settlement/currencyrate` |
+
+Credentials come from the Mastercard block in `.env.example`. `server.mjs` runs
+Mastercard's agent toolkit over stdio and needs none of them; `.mcp.json` registers it.
+Further reading: [the track playbook](docs/mastercard-track-playbook.md) and
+[sandbox test cards](docs/mastercard-test-cards.md).
 
 ## Run it
 
@@ -316,6 +421,9 @@ that last case.
 |---|---|
 | `ledger-approver/` | Policy engine, gate service, React approver app, tests |
 | `filings/` | Seven DX defect filings and device evidence |
+| `mastercard/` | Five Mastercard service clients, OAuth 1.0a signing and JWE |
+| `demo/`, `test/`, `server.mjs` | The mandate demo, 82 offline tests, the Mastercard MCP server |
+| `docs/` | Mastercard track playbook and sandbox test cards |
 | `vi-replay/` | Verifiable-intent replay fixtures and the audit validator |
 | `workspace/` | The ICM workspace. Two tracks: `tracks/build` and `tracks/filing`, the pipeline the filings were produced through |
 | `ap4m-agent.cjs`, `run-ap4m.cjs`, `close-channel.cjs` | The AP4M payment agent and its runner |
