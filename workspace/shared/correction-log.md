@@ -28,6 +28,10 @@ afterwards does not work, because by then the sentence reads as true.
 | 8 | A `sed` range deletion reported as applied | The range silently matched nothing; a duplicated block survived in the file. | Inspecting the file structure rather than trusting the edit's exit code |
 | 9 | A mutation test reported as proving assert X | The patch was broad enough that an earlier integrity guard tripped first. The assert under test never ran. | Reading which assertion message actually printed |
 | 10 | "We are on Nano S, let us move up" (the premise handed to the work) | The emulator was already running `--model nanox`, and no Nano S build existed in the bundle at all. | `docker inspect` before acting on the premise |
+| 11 | "A further 0.01 RLUSD arrived from the earlier channels being settled and closed", published in the receipt-trail artifact | Invented. Reading the chain showed two further payments of 0.01 and 0.02 on channels this session never opened, made by another party. Nothing was attributable to settlement, and the 0.01 figure was wrong as well. | Generating the evidence from the chain instead of reasoning about a balance |
+| 12 | A payout balance reconciled against "the three payments documented here" | Presented a partial list as a complete inventory. Sixteen redemptions existed, not three, and 0.02 RLUSD had left the wallet, which no narrative accounted for. A balance only reconciles against *every* transfer in both directions. | Summing incoming and outgoing transfers mechanically and printing the difference |
+| 13 | A total quoted with no block number | The workspace is shared. Three redemptions arrived between generating the measurement file and reading it. Any figure without its block is stale when it is read. | The script reporting a different count on two consecutive runs minutes apart |
+| 14 | "The ceiling comparison precedes `buyResource`, which is where signing happens", marked **measured** from the agent's ordered stdout | The agent printed a line saying it had decided and compared nothing. The only real check was `maximumAmount` inside the SDK. The stdout was real; what it described did not exist. A log line is not a decision, and reading one as evidence of a branch is the quote-and-conclusion error in code form. | Running the refusal case the claim implied, which exercised the branch and found it absent |
 
 ## What generalises
 
@@ -43,3 +47,12 @@ afterwards does not work, because by then the sentence reads as true.
    whole task.
 6. **A reviewer is not an oracle.** During this run a reviewer was wrong twice and
    right three times. Each verdict took its own measurement.
+7. **A log line is not a measurement of the code that printed it.** Item 14: the
+   output said a decision was made, so the decision was recorded as measured.
+   Reading the branch would have taken ten seconds. Where a claim is about control
+   flow, the evidence is the control flow.
+
+8. **Do not explain a balance. Reconcile it.** Items 11 to 13 are one failure: a
+   number was short of expectation, and a plausible cause was supplied instead of
+   a sum. Incoming minus outgoing equals balance, or it does not and the gap is
+   recorded unexplained. There is no third option.

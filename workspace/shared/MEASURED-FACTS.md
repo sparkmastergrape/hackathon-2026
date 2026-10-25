@@ -97,3 +97,83 @@ Recorded here so nothing is lost, and attributed so nothing is misclaimed.
 - `speculos-xrp/device-screens.png`, an eight-screen Nano X composite with no
   invoice binding. Produced by JD's fork session. **Withheld by JD.** Do not
   publish it and do not describe its contents in a document that goes out.
+
+## AP4M x402 on the EVM sidechain, chain 1449000
+
+Added 25 Oct 2026 by the AP4M build session.
+
+**This is a different x402 implementation from the t54 facilitator above.** The
+facilitator serves `xrpl:*` and no EVM network. AP4M is its own service on chain
+1449000, with its own contracts and its own scheme name. Do not read a fact about
+one as a fact about the other.
+
+| Thing | Value |
+| :-- | :-- |
+| Service | `https://hackathon.ap4m.build` |
+| Scheme in the 402 challenge | `batch-settlement` |
+| PaymentLedger | `0xcAB42800A5ECF0D253Fa2581Bb3334B4DAEfaE91` |
+| PooledEscrowVault | `0x83DD9cD010eb46e96eceF8F7eB0a18f7845AaBC0` |
+| RLUSD (ERC-20, 18 dp) | `0x27b57a9D0b8d24EB97259c4E2279e45255e016f3` |
+| `confirmationBlocks` in the x402 context | 1 |
+| Redemption selector | `0x21eb2efb`, recomputed from `redeemVoucher((bytes32,uint256),bytes)` |
+
+Settled payments are **not transcribed here.** They live in
+`tracks/build/stages/01-measure/output/measurements.md`, written straight from
+the chain by `icm-x402-evidence.mjs` at the repository root. Re-run that script
+to re-measure; copying a hash out of it into this page would break rule 13.
+
+As of block 9228805, 25 Oct 2026: 16 `VoucherRedeemed` events across 5 channels,
+0.29 RLUSD redeemed in total, and the payout wallet reconciles exactly against
+its incoming and outgoing RLUSD transfers. The figure moves whenever anyone runs
+the demo, so treat any total as a snapshot with its block.
+
+**Voucher amounts are cumulative per channel.** The signed field is the running
+total, not the amount of the payment. Observed across nine redemptions on channel
+`0x6d824358…`, where the cumulative rose monotonically.
+
+**The `VoucherRedeemed` event records `agent` and `submitter` separately.** In the
+x402 path they differ: the Agent authorises and the Merchant sends. The ledger
+records the separation, so it is not only a claim about our own code.
+
+### What is not established
+
+- The PaymentLedger is **not source-verified** on the public explorer. That a
+  65-byte signature is mandatory in the calldata is measured. That the contract
+  checks it is not.
+- `https://hackathon.ap4m.build/llms.txt` and `/docs/*.md` return **HTTP 401**
+  without a participant session, so an agent cannot read the service's own
+  guides. `GET /public/config` and `GET /public/x402-context` are unauthenticated.
+- No device and no human approval exist anywhere in this path. Every signature is
+  from a software key.
+
+### The spending ceiling refuses — 25 Oct 2026
+
+A Merchant priced at 0.50 RLUSD against an Agent ceiling of 0.10 was refused by
+two independent layers, both **before** a voucher was signed:
+
+- the Agent's own decode-and-compare of the 402 challenge, exit code 3;
+- `buyResource` in the AP4M SDK, *"Merchant challenge exceeds the configured
+  purchase authority"*, which still refuses when the Agent's own check is skipped.
+
+Neither refusal reached the Merchant or the ledger. The Merchant quoted the high
+price without complaint.
+
+The chain recorded nothing across the run: 12 redemptions on channel
+`0x6d824358…` before and after, no new claim IDs, cumulative 0.24 and payout
+balance 0.27 RLUSD both unchanged over 11 blocks. Rig and raw output in
+`tracks/build/stages/03-prove/output/refusal-case.md`.
+
+**The boundary was run, one base unit apart.** The ceiling is 100000000000000000
+base units.
+
+| Price, base units | Relation to ceiling | Outcome | Chain |
+| :-- | :-- | :-- | :-- |
+| 100000000000000001 | one above | refused by both layers, exit 3 | 12 redemptions before and after, delta 0 |
+| 100000000000000000 | exactly equal | **bought** | 13th redemption, amount exactly 100000000000000000 |
+
+**The comparison is `>`, so the ceiling is inclusive:** a price equal to the limit
+is spendable. State which side the boundary falls on when quoting a ceiling.
+
+The equal case is also the control that must pass — a rule that rejected its own
+legitimate input would have failed there. Still not run: one base unit *below*
+the ceiling, and anything involving the channel cap, a device or a human.

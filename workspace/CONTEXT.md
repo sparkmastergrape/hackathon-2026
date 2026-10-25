@@ -34,6 +34,7 @@ reporting it.
 | `shared/evidence-discipline.md` | How a receipt is checked |
 | `shared/completed-run.md` | The filing run that produced `filings/` |
 | `shared/SESSION-RECORD-2026-10-25.md` | The build session: what is proven, what is open, what to distrust |
+| `shared/SESSION-RECORD-AP4M-X402.md` | The AP4M x402 session: the EVM-sidechain payment path, same three questions |
 
 Both tracks have a stage named `02-measure`, and they are different stages.
 Build's measures a host or a device. Filing's reproduces a defect on a
