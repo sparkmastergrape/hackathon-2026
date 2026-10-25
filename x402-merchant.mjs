@@ -26,7 +26,13 @@ const provider = new ethers.JsonRpcProvider(context.network.replace('eip155:', '
 // it is measured, time-stamped and only the merchant holds it.
 const content = {
   dataset: 'ai-visibility-snapshot',
-  measuredAt: new Date().toISOString(),
+  // Fixed, not the clock. The dataset below is a constant, so stamping it with
+  // the time this process happened to start claimed a fresh measurement that
+  // never happened. It also broke every restart: `content` is part of the
+  // merchant store identity, so a new timestamp meant a new identity, and the
+  // store refused to open with "belongs to another configuration" unless it was
+  // handed a new state directory each run. One value, one identity, one store.
+  measuredAt: process.env.RESOURCE_MEASURED_AT ?? '2026-10-24T00:00:00.000Z',
   methodology: 'assistant citation sampling, 7 surfaces, n=120 prompts per surface',
   brand: 'example-roofing-co',
   // Canonical JSON admits only safe integers, so rates are percent and
