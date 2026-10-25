@@ -23,6 +23,7 @@ import { buildMandate, rlusd, verifyMandate, hashMandate, describeMandate } from
 import { SpendLedger } from "../ledger-spend/index.js";
 import { createPayer, PAID, REQUIRES_CONFIRMATION, REFUSED } from "./index.js";
 import { describeVerdict } from "../guard/index.js";
+import { chooseChannel, describeChoice } from "./choose-channel.mjs";
 import { AP4M_API_URL, RPC_URL, CHAIN_ID, RLUSD, PAYMENT_LEDGER } from "../config/network.js";
 
 const KIT = "C:/Users/JD/Documents/Playground/ap4m-hackathon";
@@ -90,13 +91,23 @@ const channels = (
     })
   ).json()
 ).channels;
-const channel = channels.find((c) => c.channel_status === "open");
-if (!channel) {
-  console.error("no OPEN channel — run `npm run open-channel` first");
+const price = parseUnits(PRICE_RLUSD, 18);
+
+// Pick by on-chain headroom, not by list order, and refuse now rather than
+// stalling mid-run. See choose-channel.mjs for why this is not `find(open)`.
+let choice;
+try {
+  choice = await chooseChannel({ channels, provider, need: price * BigInt(CALLS) });
+} catch (e) {
+  console.error(`REFUSING: ${e.message}`);
   process.exit(1);
 }
+const channel = choice.channel;
+if (choice.candidates.length > 1) {
+  console.log(`open channels, roomiest first:`);
+  console.log(describeChoice(choice, channel.channel_id));
+}
 
-const price = parseUnits(PRICE_RLUSD, 18);
 const cap = BigInt(channel.cap_wei);
 
 // RECONCILIATION. Vouchers are cumulative, so a payer that starts with an empty
@@ -148,6 +159,30 @@ const merchant = createX402Merchant({
 await new Promise((r) => merchant.server.listen(PORT, "127.0.0.1", r));
 console.log(`merchant  listening on ${resourceUrl}`);
 
+// The merchant holds a lock file on its state directory, and it SURVIVES A
+// CRASH: one unhandled error anywhere below leaves `merchant.lock` behind, and
+// then every later run dies at startup with "another Merchant is using this
+// state directory" — pointing at a process that does not exist. It cost two
+// runs to work that out (DX-LOG D-033). So the lock is released on every exit
+// path, not just the happy one.
+let merchantClosed = false;
+const releaseMerchant = async () => {
+  if (merchantClosed) return;
+  merchantClosed = true;
+  await merchant.close().catch(() => {});
+};
+for (const signal of ["SIGINT", "SIGTERM"])
+  process.once(signal, async () => {
+    await releaseMerchant();
+    process.exit(130);
+  });
+for (const event of ["uncaughtException", "unhandledRejection"])
+  process.once(event, async (e) => {
+    console.error(`\n${event}: ${e?.stack ?? e}`);
+    await releaseMerchant();
+    process.exit(1);
+  });
+
 // --- the envelope: signed once, by a human (here, a local key for the key
 //     ceremony; the device-signed run is `npm run gate-a` plus this script
 //     with the signature pasted in) ---
@@ -188,9 +223,27 @@ if (!check.ok) process.exit(1);
 // silent per-payment default.
 const peek = await fetch(resourceUrl, { headers: { "X-AP4M-CHANNEL-ID": channel.channel_id } });
 const { decodeX402PaymentRequired } = await import("@ap4m/sdk");
+
+// Say what the merchant actually did when it is not a 402 with a challenge.
+// `decodeHeader` throws `Cannot read properties of null (reading 'length')` on a
+// missing header — a stack trace inside the SDK that names neither the header
+// nor the status, and sends you looking for a bug in your own decoder
+// (DX-LOG D-032). One check turns that into a sentence.
+const challengeHeader = peek.headers.get("PAYMENT-REQUIRED");
+if (!challengeHeader) {
+  const body = await peek.text().catch(() => "(unreadable)");
+  console.error(
+    `\nREFUSING: the merchant answered HTTP ${peek.status} with no PAYMENT-REQUIRED header.` +
+      `\n  body: ${body.slice(0, 300)}` +
+      `\n  headers: ${[...peek.headers.keys()].join(", ")}` +
+      `\nA merchant that cannot price the resource cannot be paid. Check that the AP4M` +
+      `\nservice is reachable and that no other merchant holds this state directory.`,
+  );
+  await releaseMerchant();
+  process.exit(1);
+}
 const claimed = BigInt(
-  decodeX402PaymentRequired(peek.headers.get("PAYMENT-REQUIRED")).accepts[0].extra
-    .acceptedCumulativeAmount,
+  decodeX402PaymentRequired(challengeHeader).accepts[0].extra.acceptedCumulativeAmount,
 );
 console.log(`\nmerchant claims accepted cumulative ${formatUnits(claimed, 18)} RLUSD`);
 
@@ -206,12 +259,12 @@ if (claimed !== redeemedAlready) {
         `Re-run with --accept-claimed to adopt the merchant's figure as the starting point,\n` +
         `which is safe only because it is bounded by the channel cap (${formatUnits(cap, 18)} RLUSD).`,
     );
-    await merchant.close();
+    await releaseMerchant();
     process.exit(1);
   }
   if (claimed > cap) {
     console.error("REFUSING: claimed cumulative exceeds the channel cap");
-    await merchant.close();
+    await releaseMerchant();
     process.exit(1);
   }
   console.log(`  --accept-claimed given: starting from ${formatUnits(claimed, 18)} RLUSD`);
@@ -220,7 +273,7 @@ if (claimed !== redeemedAlready) {
 
 if (startFrom + price * BigInt(CALLS) > cap) {
   console.error("REFUSING: that many calls would exceed the channel cap");
-  await merchant.close();
+  await releaseMerchant();
   process.exit(1);
 }
 
@@ -253,12 +306,32 @@ for (let i = 1; i <= CALLS; i++) {
     break;
   } else {
     console.log(`  FAILED ${r.code}: ${r.message}`);
+    // A rejection from the merchant is where a concurrent payer shows up, and
+    // the error it produces says nothing useful ("Merchant redemption
+    // transaction does not match payment"). Vouchers are cumulative: if someone
+    // else signed a HIGHER total on this channel while we were mid-request, our
+    // voucher is stale and the redemption reverts. The channel's own `redeemed`
+    // figure is the tell, so we go and look rather than guessing.
+    const nowRedeemed = BigInt(
+      (await new Contract(PAYMENT_LEDGER, CHANNELS_ABI, provider).channels(channel.channel_id))[8],
+    );
+    if (nowRedeemed !== redeemedAlready) {
+      console.log(
+        `\n  !! THE CHANNEL MOVED UNDER US: redeemed was ${formatUnits(redeemedAlready, 18)} at ` +
+          `startup and is ${formatUnits(nowRedeemed, 18)} now, with ${hashes.length} payment(s) from us.`,
+      );
+      console.log(
+        `     Another payer is live on this channel with the same agent key. Cumulative vouchers\n` +
+          `     allow exactly one writer per channel — the other process must stop before this one\n` +
+          `     can run. See ARCHITECTURE §7 T5 and DX-LOG D-031.`,
+      );
+    }
     failed = true;
     break;
   }
 }
 
-await merchant.close();
+await releaseMerchant();
 
 console.log(`\n=== ${failed ? "INCOMPLETE" : "GATE C"} ===`);
 console.log(JSON.stringify(payer.stats(), (_, v) => (typeof v === "bigint" ? v.toString() : v), 2));

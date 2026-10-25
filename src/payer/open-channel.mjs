@@ -87,14 +87,20 @@ const listChannels = async () => {
 };
 
 const existing = await listChannels();
-const alreadyOpen = existing.find((c) => c.channel_status === "open");
-if (alreadyOpen) {
-  console.log(`\nAn open channel already exists — nothing to do.`);
-  console.log(`channel  ${alreadyOpen.channel_id}`);
-  console.log(`cap      ${Number(alreadyOpen.cap_wei) / 1e18} RLUSD`);
-  console.log(`payout   ${alreadyOpen.payout}`);
+const open = existing.filter((c) => c.channel_status === "open");
+if (open.length > 0 && !args.includes("--allow-second")) {
+  // The guard is here so that running this on discovery, or twice by reflex,
+  // cannot allocate a second channel. Opening another is a real decision, and
+  // `--allow-second` is how you say you meant it — usually because an existing
+  // channel is nearly exhausted (`npm run channels` shows the headroom).
+  console.log(`\n${open.length} open channel(s) already exist — nothing to do.`);
+  for (const c of open)
+    console.log(`channel  ${c.channel_id}  cap ${Number(c.cap_wei) / 1e18} RLUSD  payout ${c.payout}`);
+  console.log(`\nPass --allow-second to open another anyway.`);
   process.exit(0);
 }
+if (open.length > 0)
+  console.log(`\n--allow-second: ${open.length} channel(s) already open, opening another on purpose`);
 console.log(
   `channels ${existing.length} existing, none open (${[...new Set(existing.map((c) => c.channel_status))].join(", ") || "none"})`,
 );

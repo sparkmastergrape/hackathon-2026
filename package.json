@@ -20,7 +20,8 @@
     "deploy": "node scripts/deploy-registry.mjs",
     "revoke": "node src/revocation/revoke.mjs",
     "injection": "node src/demo/injection-scene.mjs",
-    "verify-claims": "node scripts/verify-claims.mjs"
+    "verify-claims": "node scripts/verify-claims.mjs",
+    "channels": "node scripts/channels.mjs"
   },
   "repository": {
     "type": "git",

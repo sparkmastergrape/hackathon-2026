@@ -47,11 +47,23 @@ XRPL EVM Testnet, **chain 1449000**. RLUSD `0x27b57a9D0b8d24EB97259c4E2279e45255
 - Device (Speculos, app-ethereum 1.23.0): `0xDad77910DbDFdE764fC21FCD4E74D71bBACA6D8D` — both the Mandate and the Revocation recover to it
 - Channel `0x6d824358…`, capacity **1 RLUSD**. All nine payments settle against it as cumulative vouchers.
 
-> **Demo note, from the verifier itself:** that channel has since been spent down
-> to 0.975682 of its 1 RLUSD capacity by later runs — about **two** more payments
-> of headroom. `verify-claims` warns when fewer than five remain. Open or top up
-> a channel before demoing live, or the cap will stop the demo. That is the cap
-> working, but it is not what you want on stage.
+> **Demo note, and it is the most practical thing in this README.** The channel
+> those nine payments settled on is now at 0.975682 of its 1 RLUSD capacity —
+> two payments of headroom. Two things we learned trying to fix that:
+>
+> - **You may not be able to open a fresh channel.** The service refuses a
+>   seventh with `PayoutBindingLimitExceeded`, and tells you only *after* your
+>   vault transaction has landed and cost gas. Closed channels do not appear to
+>   release their binding (DX-LOG D-031). Plan on reusing a channel.
+> - **A channel admits exactly one payer process.** Vouchers are cumulative, so
+>   two payers race and the loser's redemption reverts with an error that
+>   mentions neither the total nor the cause (DX-LOG D-032). We watched a second
+>   process drain 0.21 RLUSD in three minutes while our own calls failed.
+>
+> So `npm run channels` lists every channel with its on-chain headroom, and both
+> runners now pick the roomiest open channel rather than the first one listed,
+> sample `redeemed` twice before starting, and refuse a run that cannot finish.
+> Before any live demo: `npm run channels`, and make sure nothing else is paying.
 
 ---
 
@@ -62,6 +74,7 @@ npm install
 npm test                     # 104 tests. No device, no chain, no funds.
 npm run injection            # the prompt-injection scene
 npm run verify-claims        # re-check every hash above against the chain
+npm run channels             # every channel, with its on-chain headroom
 ```
 
 With Docker, for the device:
@@ -173,7 +186,7 @@ the wrong chain. (DX-LOG D-017)
 | [`src/device/`](src/device/) | a Ledger wrapped as an approver (Speculos or hardware) |
 | [`contracts/MandateRegistry.sol`](contracts/MandateRegistry.sol) | 135 lines (81 of them code), no owner, no admin, no unrevoke |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | design, data structures, threat model (§7) and the boundary (§7.1) |
-| [`docs/DX-LOG.md`](docs/DX-LOG.md) | 30 developer-experience findings, captured at the moment of friction |
+| [`docs/DX-LOG.md`](docs/DX-LOG.md) | 33 developer-experience findings, captured at the moment of friction — one of them retracted on re-check |
 | [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) | the plan, with each gate's result recorded as it passed |
 
 The first five modules are pure: no keys, no device, no network, no model.

@@ -25,6 +25,7 @@ import { buildGrant, toGrantSignerPayload, verifyGrant, describeGrant, hashGrant
 import { SpendLedger } from "../ledger-spend/index.js";
 import { createPayer, PAID, REQUIRES_CONFIRMATION, REFUSED } from "./index.js";
 import { createMockMerchant, DEFAULT_CHANNEL_ID } from "./mock-merchant.mjs";
+import { chooseChannel, describeChoice } from "./choose-channel.mjs";
 import { connectSpeculosApprover } from "../device/speculos-approver.mjs";
 import { RLUSD, PAYMENT_LEDGER, RLUSD_DECIMALS, MANDATE_REGISTRY } from "../config/network.js";
 import { createOnChainChecker, REGISTRY_ABI } from "../revocation/index.js";
@@ -104,21 +105,30 @@ if (LIVE) {
   })
     .then((r) => r.json())
     .then((d) => d.channels);
-  const open = channels.find((c) => c.channel_status === "open");
-  if (!open) {
-    console.error("no OPEN channel — run `npm run open-channel` first");
+  // Every payment this run intends to make: the unattended batch, the granted
+  // one that resolves the escalation, and headroom for the replay attempt and a
+  // retry. Pick by on-chain headroom and refuse now if it cannot finish — a
+  // demo that dies halfway is worse than one that never starts.
+  let choice;
+  try {
+    choice = await chooseChannel({
+      channels,
+      provider,
+      need: PRICE * BigInt(UNATTENDED_CALLS + 3),
+    });
+  } catch (e) {
+    console.error(`REFUSING: ${e.message}`);
     await approver.close();
     process.exit(1);
   }
+  const open = choice.channel;
+  if (choice.candidates.length > 1) {
+    log(`open channels, roomiest first:`);
+    log(describeChoice(choice, open.channel_id));
+  }
   channelId = open.channel_id;
   channelCap = BigInt(open.cap_wei);
-
-  const CHANNELS_ABI = [
-    "function channels(bytes32) view returns (bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,address,uint64,uint8,address,uint64,address,uint64,uint64,uint64)",
-  ];
-  ledgerSeed = BigInt(
-    (await new Contract(PAYMENT_LEDGER, CHANNELS_ABI, provider).channels(channelId))[8],
-  );
+  ledgerSeed = choice.redeemed;
 
   const PORT = 4413;
   resourceUrl = `http://127.0.0.1:${PORT}/resource`;

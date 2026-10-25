@@ -6,9 +6,9 @@ Format per entry: what I expected → what happened → exact doc URL → screen
 
 ---
 
-## Summary — 30 findings, and the five worth your time
+## Summary — 33 findings, and the six worth your time
 
-Written during the build, not reconstructed after it. Of 30 entries: **26 confirmed**
+Written during the build, not reconstructed after it. Of 33 entries: **29 confirmed**
 against a live page, a shipped package, a device or the chain — one of those
 (D-030) being our own design rather than anyone's bug; 2 confirmed in the type
 definitions with runtime behaviour unverified; 1 a capability gap that is by
@@ -24,6 +24,8 @@ Ranked by what we would file first:
 | **D-019 / D-020** | `@ap4m/sdk` | The payer validates scheme, network, asset, `payTo` and ledger — **never the amount** — and the cumulative total it signs is taken from the merchant's own 402 field. A merchant can overstate it and collect the difference while the quoted price looks right. | a warning in the README, and an optional expected-total argument |
 | **D-001** | Ledger XRP signer docs | The page's two derivation-path examples disagree on coin type (0 vs 144) *and* on the `m/` prefix. Copy one and you derive a Bitcoin account. | two characters |
 | **D-003** | DMK how-to | The parameter table documents `deviceAction`; the example beneath it passes `openAppDeviceAction`. | one line |
+| **D-031** | AP4M service | `PayoutBindingLimitExceeded` — an undocumented per-merchant binding limit, reported only *after* the client has spent gas on a landed transaction and polled for 26 seconds. Closed channels seem not to release their binding. | reject at `prepare` |
+| **D-032** | `@ap4m/sdk` + service | Cumulative vouchers make a channel **single-writer**, which is documented nowhere. Two payers race, and the loser gets `Merchant redemption transaction does not match payment` plus `retrySamePayment: true` — advice that cannot work. Looks exactly like a flaky RPC. | one doc line + a better error |
 
 Two are genuinely good things that are simply undocumented, and we would rather
 they were advertised than fixed: **D-007** (`isBlindSign` / `usedFallback` are
@@ -37,10 +39,16 @@ written, with the wrong story attached to it. It is in here because the point of
 a DX log is what the building taught you, not who is to blame.
 
 By surface: **Ledger docs, SDK, app-ethereum and Speculos — 18** (D-001, D-003–D-016,
-D-026–D-028); **AP4M SDK and service — 8** (D-018–D-025); **both sponsors' docs
-together — 1** (D-017, the chain-ID conflict, and the one that would have silently
-broken every signature); **tooling — 1** (D-029); **ours — 1** (D-030);
-**retracted — 1** (D-002).
+D-026–D-028); **AP4M SDK and service — 11** (D-018–D-025, D-031–D-033); **both
+sponsors' docs together — 1** (D-017, the chain-ID conflict, and the one that would
+have silently broken every signature); **tooling — 1** (D-029); **ours — 1**
+(D-030); **retracted — 1** (D-002).
+
+The last three (D-031–D-033) came out of one hour spent trying to open a fresh
+channel for the demo, and they are the most operationally expensive findings in
+the log: a binding limit discovered after spending gas, a single-writer
+constraint that presents as a flaky RPC, and a lock file that turns one crash
+into every later run failing. None of them is in any document.
 
 ---
 
@@ -292,6 +300,27 @@ const maximum  = expected + BigInt(accepted.amount);               // what gets 
 **Fix:** the scene advances an injected clock past `maxStaleMs` rather than only breaking the read, and the test asserts `detail.ageMs > detail.maxStaleMs` — so it pins down *why* the payment stopped, not just that it did. The README's revocation table already stated the freshness window; the scene now matches it.
 **Lesson, and it is general:** a fail-closed control with a cache has two failure modes — "cannot read" and "read too old" — and a demo that only exercises the second while narrating the first is a demo that tests the cache, not the control.
 **Status:** confirmed · our design, not a vendor bug · not filed
+
+### D-031 · `PayoutBindingLimitExceeded` is undocumented, and you only learn it after a transaction has landed
+**Expected:** asking for a seventh channel would be refused up front, or granted.
+**Observed:** `POST /channel-requests/prepare` returned a vault call, the agent sent it (tx `0x62cfbaf9…`, block 9231414, status 1 — real gas spent), the service recorded the request, and then polling reported `requested` eleven times over ~26 seconds before ending at `failed: bindRequestedPayout failed: PayoutBindingLimitExceeded`. No limit is stated anywhere in the participant docs, and the error names neither the limit nor what is consuming it (six payout bindings to one merchant, four of them on channels long since closed).
+**Why it matters:** the failure costs a landed on-chain transaction and half a minute before it tells you anything, and it is unrecoverable by retrying — the only remedy is to use an existing channel. A team that discovers this during a demo window has no path forward. Closed channels apparently do not release their binding, which is the part worth documenting most.
+**Fix:** state the per-merchant binding limit; reject at `prepare` time, before the client spends gas; say in the error how many bindings exist and whether closing a channel frees one.
+**Status:** confirmed live against `hackathon.ap4m.build` 2026-10-25 · not filed — **the sharpest service-side gap we hit**
+
+### D-032 · Cumulative vouchers make a channel single-writer, and the race fails with an error that explains nothing
+**Observed:** with a second payer live on the same channel and the same agent key, our voucher for cumulative 0.294744 was already stale by the time the merchant redeemed it. The chain said `transaction execution reverted`; the SDK turned that into `Error: Merchant redemption transaction does not match payment`, and the x402 layer reported `{"error":"payment_pending_or_unavailable","retrySamePayment":true}` — advice that is actively wrong, because retrying the same payment can never succeed once a higher total is redeemed. Nothing in the chain mentioned a cumulative total, a channel, or a concurrent writer. Separately, `decodeHeader` throws `TypeError: Cannot read properties of null (reading 'length')` when a response simply has no `PAYMENT-REQUIRED` header, which sends you looking for a bug in your own decoder.
+**Why it matters:** "one writer per channel" is a hard architectural constraint of cumulative vouchers, and it is nowhere in the docs. The observable symptom — an intermittent revert under load — looks exactly like a flaky RPC, so a team will spend hours on the wrong thing. We did, until we read the channel's `redeemed` figure twice and watched it move with nothing of ours running.
+**Fix:** say that a channel admits one payer process; have the merchant compare the voucher's cumulative amount against the channel's redeemed figure and return *that*; drop `retrySamePayment` for this case; and name the missing header in `decodeHeader`.
+**Fix on our side:** `src/payer/choose-channel.mjs` samples `redeemed` twice before a run and refuses when it moves, and a merchant rejection now re-reads the channel and reports "the channel moved under us" with both figures. Recorded as a live instance of ARCHITECTURE §7 T5, which until now was a theoretical residual.
+**Status:** confirmed live on chain 1449000 2026-10-25 · not filed
+
+### D-033 · The merchant's state lock survives a crash, so one failed run breaks every later one
+**Observed:** `createX402Merchant` takes a lock on its state directory and holds it until `close()`. Any unhandled error below that point — ours was the `decodeHeader` TypeError in D-032 — exits the process with the lock still on disk. Every subsequent run then dies at startup with `merchant.lock exists: another Merchant is using this state directory`, naming a process that does not exist. Two runs were lost to this before the cause was obvious; the message does at least say which file to delete, and that `merchant.sqlite` must be left alone.
+**Why it matters:** the failure is one step removed from its cause, and it arrives at the next run — so the error you are debugging is not the error you have. On a demo machine it reads as "the merchant is broken".
+**Fix:** release the lock on process exit (`process.on("exit")`), or record the owning pid in the lock and ignore a lock whose process is gone.
+**Fix on our side:** `gate-c` now releases the merchant on `uncaughtException`, `unhandledRejection`, `SIGINT` and `SIGTERM`, not only on the happy path.
+**Status:** confirmed 2026-10-25 · not filed — small, self-contained PR to `ap4m-x402.mjs`
 
 ---
 

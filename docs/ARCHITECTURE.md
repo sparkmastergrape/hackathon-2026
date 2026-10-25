@@ -284,7 +284,7 @@ The question that matters: *the agent is fully compromised — what can it do?*
 | T2 | Compromised agent runtime tries to spend freely | Agent holds no mandate-signing key; caps enforced in C2 | **Bounded by the on-chain channel cap, not by the Mandate** — see §7.1 |
 | T3 | Malicious 402 sets an absurd `amount` or fee | Pin network and scheme filters, cap value and fee, never let `extra` flow unexamined into a transaction | — |
 | T4 | Replay of one payment against many invoices | Invoice binding, bounded validity window on the signed payload | — |
-| T5 | Concurrent tool calls each pass the same aggregate check | C3 reserves before paying; the reservation is the lock | Needs a real transaction/lock, not read-then-write |
+| T5 | Concurrent tool calls each pass the same aggregate check | C3 reserves before paying; the reservation is the lock | In-process only. **Observed live, not theoretical:** a second payer on the same channel drained 0.21 RLUSD in three minutes while our calls reverted — cumulative vouchers make a channel single-writer, and the error says nothing (DX-LOG D-032). `choose-channel.mjs` now detects it before a run; a multi-process deployment needs a real lock |
 | T6 | Stolen API credential | Agent never holds one; tokens are short-lived, scoped, minted only against a settled receipt | Token lifetime window |
 | T7 | Lost or destroyed device | Mandates expire by `validUntil`; (stretch) second device as recovery signer | Without recovery, wait for expiry |
 | T8 | Our backend lies about revocation | Revocation is on-chain and independently checkable | Verifier must actually check it |
