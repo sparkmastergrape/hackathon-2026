@@ -63,7 +63,9 @@ One parenthesis in the Example directions bullet would close it.
 
 ## Scope
 
-- Measured on the day of the event. The page may change.
+- Measured on the day of the event and re-measured on 2026-10-25; both
+  `eth_chainId` responses were unchanged. The page may change; its capture is
+  `evidence/pages/xrplnyc-full.png`.
 - Each chain ID was measured against one RPC host, named in the table above.
 - An earlier draft of this filing marked the mainnet value as inferred, because we
   had measured only testnet. It is now measured. Both numbers stand on an

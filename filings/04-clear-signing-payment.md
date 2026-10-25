@@ -10,6 +10,9 @@ those are where support breaks.
 
 ## What the page says
 
+Quoted from `developers.ledger.com/xrplnyc`, read on 2026-10-25. Capture:
+`evidence/pages/xrplnyc-full.png`.
+
 > "there is still no XRPL transaction Clear Signing"
 
 And, of the layer above the signer kit:

@@ -40,7 +40,11 @@ the XRPL EVM testnet.
 
 ## Scope
 
-- Measured by DNS lookup on the day of the event, from one network.
+- Measured by DNS lookup on the day of the event, from one network, and
+  re-measured on 2026-10-25: `/public/config` still returns
+  `https://faucet.testevm.ripple.com`, and that host still has no DNS records
+  (`ENOTFOUND`). On the re-check `faucet.xrplevm.org` resolved to 216.150.1.129
+  and 216.150.16.129.
 - A second lookup from a different resolver returned `216.150.16.129` for
   `faucet.xrplevm.org`. The addresses differ by resolver or round-robin. Both
   lookups agree that one host answers and the other has no records.
