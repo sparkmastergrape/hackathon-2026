@@ -4,7 +4,9 @@
   "description": "Hackathon 2026 work",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "predemo": "node predemo.mjs",
+    "demo": "node run-ap4m.cjs"
   },
   "repository": {
     "type": "git",

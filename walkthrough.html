@@ -1,0 +1,415 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>AP4M Walkthrough</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one reading column, with runnable commands set apart from prose
+     so the person driving can find them without reading the paragraphs. */
+  :root {
+    --paper: #fbfaf7;
+    --ink: #1c1f1d;
+    --ink-soft: #5d6360;
+    --rule: #e0ded6;
+    --panel: #f4f2ec;
+    --verified: #2f6b4f;
+    --caution: #8a6a2f;
+    --accent: #1f4f6b;
+    --font-doc: "Newsreader", Georgia, "Times New Roman", serif;
+    --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14161a;
+      --ink: #e6e5e0;
+      --ink-soft: #9aa09d;
+      --rule: #2a2f35;
+      --panel: #1b1f24;
+      --verified: #6fc79b;
+      --caution: #d6a94f;
+      --accent: #6fb3d6;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14161a;
+    --ink: #e6e5e0;
+    --ink-soft: #9aa09d;
+    --rule: #2a2f35;
+    --panel: #1b1f24;
+    --verified: #6fc79b;
+    --caution: #d6a94f;
+    --accent: #6fb3d6;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-doc);
+    font-size: 17px;
+    line-height: 1.62;
+  }
+  .wrap {
+    max-width: 50rem;
+    margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 3rem 4rem;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 5vw, 2.6rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 0.5rem;
+  }
+  h2 {
+    font-size: 1.32rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 0.6rem;
+  }
+  h3 { font-size: 1.02rem; font-weight: 600; margin: 0 0 0.35rem; }
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; }
+  li:last-child { margin-bottom: 0; }
+  strong { font-weight: 600; }
+
+  .eyebrow {
+    font-family: var(--font-data);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 0.9rem;
+  }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); max-width: 38rem; }
+  .section { margin-top: 3rem; }
+
+  code {
+    font-family: var(--font-data);
+    font-size: 0.8rem;
+    word-break: break-word;
+  }
+  pre {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 0.85rem 1rem;
+    overflow-x: auto;
+    margin: 0 0 1rem;
+    font-family: var(--font-data);
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+  pre code { font-size: inherit; word-break: normal; }
+
+  /* Architecture strip */
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; margin: 1.5rem 0; }
+  @media (max-width: 640px) { .flow { grid-template-columns: 1fr 1fr; } }
+  .node {
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    padding: 0.8rem 0.85rem;
+    min-width: 0;
+  }
+  .node .r {
+    font-family: var(--font-data);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .node .t { font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
+  .node .d { font-size: 0.82rem; color: var(--ink-soft); margin-top: 0.25rem; line-height: 1.4; }
+
+  /* Beats */
+  .beat {
+    border-left: 1px solid var(--rule);
+    padding: 0 0 1.5rem 1.4rem;
+    margin-left: 0.5rem;
+    position: relative;
+  }
+  .beat:last-child { padding-bottom: 0; }
+  .beat::before {
+    content: "";
+    position: absolute;
+    left: -0.3rem;
+    top: 0.5rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .beat .say {
+    font-style: italic;
+    color: var(--ink-soft);
+    border-left: 2px solid var(--rule);
+    padding-left: 0.8rem;
+    margin: 0.6rem 0 0;
+    font-size: 0.95rem;
+  }
+
+  .callout {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--caution);
+    background: var(--panel);
+    padding: 1rem 1.15rem;
+    margin: 1.5rem 0 0;
+  }
+  .callout h3 { color: var(--caution); }
+  .callout p, .callout li { font-size: 0.95rem; }
+  .ok { border-left-color: var(--verified); }
+  .ok h3 { color: var(--verified); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .scroll { overflow-x: auto; margin-bottom: 1rem; }
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.9rem 0.55rem 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--font-data);
+    font-size: 0.63rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  td code { font-size: 0.74rem; }
+
+  a { color: var(--accent); text-underline-offset: 0.2em; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Mastercard track · RLUSD on XRPL EVM</p>
+  <h1>AP4M Walkthrough</h1>
+  <p class="lede">What we built, how to run it, and what to say while it runs.
+  Read this once before demoing; the commands are set apart so you can find them
+  at a glance.</p>
+
+  <div class="section">
+    <h2>The one-sentence version</h2>
+    <p>An autonomous agent holds its own wallet, signs a payment voucher without a
+    human in the loop, redeems it against a settlement contract, and the money lands
+    in a merchant wallet — and anyone can verify that it happened without trusting
+    us or the payment service.</p>
+  </div>
+
+  <div class="section">
+    <h2>The pieces</h2>
+    <div class="flow">
+      <div class="node">
+        <span class="r">Pays</span>
+        <span class="t">Agent wallet</span>
+        <span class="d">Signs every voucher. Holds XRP for gas.</span>
+      </div>
+      <div class="node">
+        <span class="r">Holds funds</span>
+        <span class="t">Escrow vault</span>
+        <span class="d">Our 20 RLUSD budget sits here.</span>
+      </div>
+      <div class="node">
+        <span class="r">Records</span>
+        <span class="t">PaymentLedger</span>
+        <span class="d">Verifies the signature, emits the claim.</span>
+      </div>
+      <div class="node">
+        <span class="r">Receives</span>
+        <span class="t">Merchant wallet</span>
+        <span class="d">Gets the RLUSD. Ours, not a pool.</span>
+      </div>
+    </div>
+    <p>Two wallets, and they must be different addresses — AP4M rejects a setup
+    where the party authorising a payment is also the party receiving it. That
+    separation is the point, not a formality.</p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Role</th><th>Address</th><th>Needs gas</th></tr></thead>
+        <tbody>
+          <tr><td>Agent (pays)</td><td><code>0x37F2F4166646Ea3cea94BB37BaBD88a01F52A7A2</code></td><td>Yes</td></tr>
+          <tr><td>Merchant (receives)</td><td><code>0xFf9395aa0918A789B4dC40e7cf147A73c92fcbf8</code></td><td>No</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Before you demo</h2>
+    <p>One command. It spends nothing and changes no chain state, so it is safe to
+    run in front of people — and it catches every setup problem we hit today:</p>
+<pre><code>npm run predemo</code></pre>
+    <p>Twelve checks across three groups: that <code>.env</code> holds the keys and is
+    git-ignored, that the agent key matches the address AP4M has registered and has
+    gas, and that the service is up and our team still authenticates. It ends in one
+    word.</p>
+<pre><code>GO  — all 12 checks passed. Run: node run-ap4m.cjs</code></pre>
+    <p>Anything else prints <code>NO-GO</code> and lists exactly which checks failed
+    and why. <strong>If it says NO-GO, do not start the demo.</strong> Fix what it
+    names — re-running without changing anything will not help.</p>
+    <p>The two underlying checks still exist on their own if you want to narrow a
+    problem: <code>node verify-wallets.mjs</code> for keys, gas and addresses, and
+    <code>node signin-check.cjs</code> for the service side.</p>
+
+    <div class="callout">
+      <h3>Check the gas before you stand up</h3>
+      <p>Each full run costs roughly 0.0003 XRP. The agent had about 20 XRP, which is
+      hundreds of runs — but the faucet is rate-limited and slow during the event, so
+      top up the night before rather than in the room.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Running it</h2>
+<pre><code>node run-ap4m.cjs</code></pre>
+    <p>One command, six steps, about twenty seconds. It pays <code>0.01</code> RLUSD
+    by default — set <code>PAYMENT_RLUSD</code> in <code>.env</code> to change it.
+    Each run opens a fresh channel and closes it at the end, so you can run it
+    repeatedly without cleanup.</p>
+
+    <h3 style="margin-top:1.5rem">What to say while it runs</h3>
+
+    <div class="beat">
+      <h3>1 — Sign in</h3>
+      <p>The agent wallet signs a one-time challenge. No password, no API key issued
+      by a human.</p>
+      <p class="say">"The agent authenticates as itself. Nobody logged in for it."</p>
+    </div>
+    <div class="beat">
+      <h3>2 — Open a channel</h3>
+      <p>One on-chain transaction to the vault, with a spending cap of 5 RLUSD.</p>
+      <p class="say">"This is the agent's allowance. It cannot spend past the cap,
+      whatever it decides to do."</p>
+    </div>
+    <div class="beat">
+      <h3>3 — Sign and redeem a voucher</h3>
+      <p>An EIP-712 typed signature over the channel and a running cumulative total,
+      submitted to the PaymentLedger.</p>
+      <p class="say">"The signature is bound to this chain and this contract, so the
+      same voucher cannot be replayed somewhere else."</p>
+    </div>
+    <div class="beat">
+      <h3>4 and 5 — Report and settle</h3>
+      <p>The service releases RLUSD from the vault to our merchant wallet and
+      publishes a receipt.</p>
+      <p class="say">"The money has moved. Here is the receipt — and we don't have to
+      take their word for it."</p>
+    </div>
+    <div class="beat">
+      <h3>6 — Close the channel</h3>
+      <p>The agent signs a final checkpoint and the channel closes.</p>
+      <p class="say">"The allowance is withdrawn. Nothing is left open."</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>The verification half</h2>
+    <p>This is the part worth the most in judging, because it is the part that does
+    not require trusting anyone. Open the
+    <a href="https://claude.ai/artifact/TEHixaoJeWMoBKTf8mxYcj">receipt trail</a> —
+    it puts AP4M's claims beside the ledger's own emitted events and shows them
+    matching.</p>
+    <p>To do it live instead, with the judge choosing the node:</p>
+<pre><code>RPC_URL=&lt;their node&gt; node verify-receipt-onchain.mjs &lt;redemption tx&gt;</code></pre>
+    <p>It confirms the transaction succeeded, that it went to the PaymentLedger,
+    decodes the claim and channel IDs out of the event log, and finds the RLUSD
+    transfer into the merchant wallet in the surrounding blocks.</p>
+
+    <div class="callout ok">
+      <h3>The line that lands</h3>
+      <p>"The receipt isn't us telling you we paid. It's the ledger telling you, and
+      you can read it from a node we've never touched."</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Traps — read these before demoing</h2>
+
+    <div class="callout">
+      <h3>Portal identifiers are claim IDs, not transaction hashes</h3>
+      <p>The identifiers under <em>Payments and receipts</em> return
+      <code>null</code> from <code>eth_getTransactionByHash</code>. Pasting one into a
+      block explorer on stage gives you an empty page and looks like a failed payment.
+      Use the transaction hashes from the agent wallet's history instead.</p>
+    </div>
+
+    <div class="callout">
+      <h3>MetaMask exports private keys without the <code>0x</code> prefix</h3>
+      <p>Pasted straight into <code>.env</code>, the key is rejected as invalid — which
+      reads like the wrong key rather than a formatting problem. Prefix it.</p>
+    </div>
+
+    <div class="callout">
+      <h3>AP4M's own config points at a faucet that does not exist</h3>
+      <p><code>/public/config</code> advertises <code>faucet.testevm.ripple.com</code>,
+      which returns NXDOMAIN. The working one is
+      <code>faucet.xrplevm.org</code>. Worth mentioning to the organizers — it is
+      costing every team the same half hour.</p>
+    </div>
+
+    <div class="callout">
+      <h3>Gas and the payout wallet are two separate blockers</h3>
+      <p>Funding the agent is not enough. <code>requestChannel()</code> binds a
+      merchant payout when it opens, so the payout wallet must be registered on the
+      portal first or the run fails at step 2.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>What we have not done</h2>
+    <p>Say this plainly if asked. It is a better answer than being caught out.</p>
+    <ul>
+      <li><strong>One payment per channel.</strong> Every run so far opened and closed
+      its own channel. Multiple vouchers on a single open channel — the actual
+      micropayment case — is untested.</li>
+      <li><strong>No cross-team payments.</strong> AP4M returns an empty merchant
+      list; the organizers have not enabled it.</li>
+      <li><strong>Demo 2 (x402 over HTTP) not run.</strong> We did the SDK path only.</li>
+      <li><strong>Small amounts only.</strong> Two payments of 0.01 RLUSD against a 20
+      RLUSD budget. Nothing has been pushed near a cap or a minimum.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>If something breaks mid-demo</h2>
+    <ul>
+      <li><strong>Preflight fails.</strong> Read what it says — it names the exact
+      problem. Do not re-run hoping.</li>
+      <li><strong>Channel hangs at "requested".</strong> The SDK polls for three
+      minutes. Let it; it usually resolves.</li>
+      <li><strong>RPC times out.</strong> Transient and common under event load.
+      Re-run. It is not a failure of the payment.</li>
+      <li><strong>Everything is broken.</strong> Fall back to the receipt trail. The
+      payments already happened and are permanently on chain — the evidence does not
+      depend on anything working in the room.</li>
+    </ul>
+  </div>
+
+  <footer>
+    XRPL EVM Testnet, chain 1449000. Test RLUSD with no financial value.
+    Verified 24 October 2026.
+  </footer>
+
+</div>
