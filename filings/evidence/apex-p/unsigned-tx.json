@@ -1,0 +1,21 @@
+{
+  "TransactionType": "Payment",
+  "Account": "ra7Zr8ddy9tB88RaXL8B87YkqhEJG2vkAJ",
+  "Destination": "rpw2Tcby6ar81Y73RyjNgqRkn4Sf7UH9Rq",
+  "Amount": "1000",
+  "Fee": "12",
+  "Sequence": 1,
+  "LastLedgerSequence": 99999999,
+  "DestinationTag": 4242,
+  "SourceTag": 402,
+  "InvoiceID": "A1B2C3D4E5F600000000000000000000000000000000000000000000000000FF",
+  "Memos": [
+    {
+      "Memo": {
+        "MemoType": "783430322F696E766F696365",
+        "MemoData": "696E762D323032362D31302D32342D30303031"
+      }
+    }
+  ],
+  "SigningPubKey": "038368B6F1151E0CD559126AE13910B8B8D790652EB5CC0B5019A63D2E60792961"
+}

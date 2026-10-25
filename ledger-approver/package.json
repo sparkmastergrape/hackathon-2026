@@ -1,0 +1,31 @@
+{
+  "name": "ledger-approver",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Human-approval gate for flagged or above-cap XRPL payments, released only by a Ledger device.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "gate": "node server/gate-server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "e2e": "node scripts/e2e-testnet.mjs"
+  },
+  "dependencies": {
+    "@ledgerhq/device-management-kit": "^1.11.0",
+    "@ledgerhq/device-signer-kit-xrp": "^0.3.0",
+    "@ledgerhq/device-transport-kit-speculos": "^1.3.0",
+    "@ledgerhq/device-transport-kit-web-hid": "^1.2.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "rxjs": "^7.8.2",
+    "xrpl": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}

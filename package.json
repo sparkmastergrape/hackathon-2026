@@ -4,7 +4,9 @@
   "description": "Hackathon 2026 work",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "predemo": "node predemo.mjs",
+    "demo": "node run-ap4m.cjs"
   },
   "repository": {
     "type": "git",
@@ -19,6 +21,7 @@
   },
   "homepage": "https://github.com/sparkmastergrape/hackathon-2026#readme",
   "dependencies": {
+    "ethers": "^6.17.0",
     "viem": "^2.57.11",
     "xrpl": "^5.3.0"
   }

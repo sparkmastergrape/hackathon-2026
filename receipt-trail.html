@@ -1,0 +1,525 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>RLUSD Receipt Trail</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a single evidence column. Claims on the left, chain facts on the
+     right, so the reader's eye crosses the page once per assertion. */
+  :root {
+    --paper: #fbfaf7;
+    --ink: #1c1f1d;
+    --ink-soft: #5d6360;
+    --rule: #e0ded6;
+    --panel: #f4f2ec;
+    --verified: #2f6b4f;
+    --claimed: #8a6a2f;
+    --accent: #1f4f6b;
+    --font-doc: "Newsreader", Georgia, "Times New Roman", serif;
+    --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14161a;
+      --ink: #e6e5e0;
+      --ink-soft: #9aa09d;
+      --rule: #2a2f35;
+      --panel: #1b1f24;
+      --verified: #6fc79b;
+      --claimed: #d6a94f;
+      --accent: #6fb3d6;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14161a;
+    --ink: #e6e5e0;
+    --ink-soft: #9aa09d;
+    --rule: #2a2f35;
+    --panel: #1b1f24;
+    --verified: #6fc79b;
+    --claimed: #d6a94f;
+    --accent: #6fb3d6;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-doc);
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 50rem;
+    margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 3rem 4rem;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 5vw, 2.6rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 0.5rem;
+  }
+  h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h3 { font-size: 1.02rem; font-weight: 600; margin: 0; }
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  .eyebrow {
+    font-family: var(--font-data);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 0.9rem;
+  }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); max-width: 38rem; }
+
+  .section { margin-top: 3.25rem; }
+  .section > h2 + p { margin-top: 0.6rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 3.25rem 0 0; }
+
+  /* Verdict */
+  .verdict {
+    margin-top: 2rem;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--verified);
+    background: var(--panel);
+    padding: 1.25rem 1.4rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2.5rem;
+  }
+  .verdict .item { min-width: 0; }
+  .verdict .k {
+    font-family: var(--font-data);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    display: block;
+  }
+  .verdict .v {
+    font-family: var(--font-data);
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Claim vs chain */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.65rem; }
+  .pair-label {
+    font-family: var(--font-data);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 2rem 0 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  @media (max-width: 640px) { .compare { grid-template-columns: 1fr; } }
+  .col { border: 1px solid var(--rule); background: var(--panel); padding: 1.1rem 1.15rem; min-width: 0; }
+  .col .src {
+    font-family: var(--font-data);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0 0 0.75rem;
+  }
+  .col.claimed .src { color: var(--claimed); }
+  .col.chain .src { color: var(--verified); }
+  .col dl { margin: 0; display: grid; gap: 0.7rem; }
+  .col dt {
+    font-family: var(--font-data);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .col dd { margin: 0.15rem 0 0; }
+
+  code, .hash {
+    font-family: var(--font-data);
+    font-size: 0.78rem;
+    word-break: break-all;
+    line-height: 1.45;
+  }
+  .hash { display: block; }
+
+  /* Steps */
+  .steps { display: grid; gap: 0; margin-top: 1.5rem; }
+  .step {
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    gap: 0 1rem;
+    border-left: 1px solid var(--rule);
+    padding: 0 0 1.6rem 1.4rem;
+    margin-left: 0.9rem;
+    position: relative;
+  }
+  .step:last-child { padding-bottom: 0; border-left-color: transparent; }
+  .step::before {
+    content: "";
+    position: absolute;
+    left: -0.3rem;
+    top: 0.45rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--verified);
+  }
+  .step .n {
+    font-family: var(--font-data);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    padding-top: 0.22rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .step .body { min-width: 0; }
+  .step .meta {
+    font-family: var(--font-data);
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+    margin-top: 0.3rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .step .hash { margin-top: 0.45rem; }
+
+  .amount {
+    font-family: var(--font-data);
+    font-weight: 600;
+    color: var(--verified);
+    font-variant-numeric: tabular-nums;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .scroll { overflow-x: auto; margin-top: 1.25rem; }
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.9rem 0.55rem 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--font-data);
+    font-size: 0.64rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  td code { font-size: 0.74rem; }
+
+  pre {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    margin: 1.25rem 0 0;
+    font-family: var(--font-data);
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+  pre code { font-size: inherit; word-break: normal; }
+
+  .note {
+    border-left: 3px solid var(--claimed);
+    background: var(--panel);
+    padding: 1rem 1.15rem;
+    margin-top: 1.5rem;
+  }
+  .note h3 { color: var(--claimed); margin-bottom: 0.4rem; }
+  .note p { font-size: 0.95rem; }
+
+  a { color: var(--accent); text-underline-offset: 0.2em; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  footer {
+    margin-top: 3.25rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">AP4M · XRPL EVM Testnet · chain 1449000</p>
+  <h1>RLUSD Receipt Trail</h1>
+  <p class="lede">Two agent payments, verified from chain data alone. Every claim the
+  AP4M service makes about these receipts is restated here as something the ledger
+  itself emitted, readable from any RPC node.</p>
+
+  <div class="verdict">
+    <div class="item">
+      <span class="k">Payments</span>
+      <span class="v">2 settled</span>
+    </div>
+    <div class="item">
+      <span class="k">Total paid</span>
+      <span class="v">0.02 RLUSD</span>
+    </div>
+    <div class="item">
+      <span class="k">Claim IDs matched</span>
+      <span class="v">2 / 2</span>
+    </div>
+    <div class="item">
+      <span class="k">Payouts traced</span>
+      <span class="v">2 / 2</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>The question</h2>
+    <p>A settlement service that issues its own receipts is asserting that it paid
+    someone. The receipt is only worth as much as the ability to check it without
+    asking that service again.</p>
+    <p>So the test is narrow: take what the AP4M portal says, and find each piece of
+    it in the ledger independently. If a claim ID appears in the portal and nowhere
+    on chain, the receipt proves nothing.</p>
+  </div>
+
+  <div class="section">
+    <h2>Claim against chain</h2>
+    <p>Both payments, each checked the same way. The right column of each pair was
+    read from <code>rpc.testnet.xrplevm.org</code> and the public explorer, with no
+    AP4M endpoint involved.</p>
+
+    <p class="pair-label">Payment 1 · 22:03Z</p>
+    <div class="compare">
+      <div class="col claimed">
+        <p class="src">What the service says</p>
+        <dl>
+          <dt>Status</dt>
+          <dd>settled · receipt published</dd>
+          <dt>Amount</dt>
+          <dd>0.01 RLUSD</dd>
+          <dt>Claim ID</dt>
+          <dd><span class="hash">0x99e40a071cec5da824fec54f470c043088bb2b4a8f3073e27d3f909a9b70dfd6</span></dd>
+          <dt>Channel</dt>
+          <dd><span class="hash">0xf32e3c03c916d6b4207be49ea11aac2935e1f53dbc2aab09c7cd2b92c558ba67</span></dd>
+          <dt>Budget drawn</dt>
+          <dd>0.02 of 20 RLUSD</dd>
+        </dl>
+      </div>
+      <div class="col chain">
+        <p class="src">What the ledger emitted</p>
+        <dl>
+          <dt>Redemption status</dt>
+          <dd>success · block 9224701</dd>
+          <dt>RLUSD transferred</dt>
+          <dd><span class="amount">0.01 RLUSD</span> vault to payout wallet</dd>
+          <dt>Claim ID in event log</dt>
+          <dd><span class="hash">0x99e40a071cec5da824fec54f470c043088bb2b4a8f3073e27d3f909a9b70dfd6</span></dd>
+          <dt>Channel in event log</dt>
+          <dd><span class="hash">0xf32e3c03c916d6b4207be49ea11aac2935e1f53dbc2aab09c7cd2b92c558ba67</span></dd>
+          <dt>Payout wallet balance</dt>
+          <dd>0.02 RLUSD via <code>balanceOf</code></dd>
+        </dl>
+      </div>
+    </div>
+
+    <p class="pair-label">Payment 2 · 22:07Z</p>
+    <div class="compare">
+      <div class="col claimed">
+        <p class="src">What the service says</p>
+        <dl>
+          <dt>Status</dt>
+          <dd>settled · channel closed</dd>
+          <dt>Amount</dt>
+          <dd>0.01 RLUSD</dd>
+          <dt>Claim ID</dt>
+          <dd><span class="hash">0xce2bb4926121377ebb356a02f4af867770fb98a7dff014ce44e419cafe891e25</span></dd>
+          <dt>Channel</dt>
+          <dd><span class="hash">0xd1fdf9e01da164bf9c4cd8cc7d1e551d0ebeceebad0aa6aad2b5cf9c59b9f9ef</span></dd>
+          <dt>Budget remaining</dt>
+          <dd>19.98 of 20 RLUSD</dd>
+        </dl>
+      </div>
+      <div class="col chain">
+        <p class="src">What the ledger emitted</p>
+        <dl>
+          <dt>Redemption status</dt>
+          <dd>success · block 9224750</dd>
+          <dt>RLUSD transferred</dt>
+          <dd><span class="amount">0.01 RLUSD</span> vault to payout wallet</dd>
+          <dt>Claim ID in event log</dt>
+          <dd><span class="hash">0xce2bb4926121377ebb356a02f4af867770fb98a7dff014ce44e419cafe891e25</span></dd>
+          <dt>Channel in event log</dt>
+          <dd><span class="hash">0xd1fdf9e01da164bf9c4cd8cc7d1e551d0ebeceebad0aa6aad2b5cf9c59b9f9ef</span></dd>
+          <dt>Cumulative on chain</dt>
+          <dd>0.02 RLUSD across both claims</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Payment 1 — chain of custody</h2>
+    <p>Four on-chain events, in order, from the agent opening a channel to RLUSD
+    arriving in a wallet it does not control.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n">01</div>
+        <div class="body">
+          <h3>Agent opens a payment channel</h3>
+          <p class="meta">block 9224696 · 22:02:45Z · to PooledEscrowVault</p>
+          <span class="hash">0x4fcb1061b5f82e1f6ad82aeeb9ae890b432aede1a3f233cb8ae756a01bcc78c5</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">02</div>
+        <div class="body">
+          <h3>Agent redeems a signed voucher</h3>
+          <p class="meta">block 9224701 · 22:03:14Z · 164,175 gas · method 0x21eb2efb</p>
+          <span class="hash">0xcb1f2dabc921537530af35d8686b8aa21e3d8ce3fe9560823f79a471ffc33d9f</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">03</div>
+        <div class="body">
+          <h3>PaymentLedger emits the claim</h3>
+          <p class="meta">same transaction · VoucherRedeemed · claimId in topic</p>
+          <span class="hash">0x99e40a071cec5da824fec54f470c043088bb2b4a8f3073e27d3f909a9b70dfd6</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">04</div>
+        <div class="body">
+          <h3>Vault pays the merchant <span class="amount">0.01 RLUSD</span></h3>
+          <p class="meta">block 9224702 · 22:03:19Z · five seconds after redemption</p>
+          <span class="hash">0x8a6607770d6e0ae3b36fc2e7413ed00c772a4b75a19dab0258ff1138be7fbf1f</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Payment 2 — chain of custody</h2>
+    <p>A second run, independently verified the same way. Same agent, new channel.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n">01</div>
+        <div class="body">
+          <h3>Agent opens a payment channel</h3>
+          <p class="meta">block 9224747 · 22:07:39Z · to PooledEscrowVault</p>
+          <span class="hash">0x95874476bf3d10a1f7b520e0aa3e92b52a0178418beb7da7b792ef4214b96500</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">02</div>
+        <div class="body">
+          <h3>Agent redeems a signed voucher</h3>
+          <p class="meta">block 9224750 · 22:07:56Z · 147,087 gas · method 0x21eb2efb</p>
+          <span class="hash">0xe39c8fb5b1868c94db686f89a614710bcc884c16cba8cc5fe9484a99cc5e0bf6</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">03</div>
+        <div class="body">
+          <h3>PaymentLedger emits the claim</h3>
+          <p class="meta">channel 0xd1fdf9e0… · matches the portal exactly</p>
+          <span class="hash">0xce2bb4926121377ebb356a02f4af867770fb98a7dff014ce44e419cafe891e25</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">04</div>
+        <div class="body">
+          <h3>Vault pays the merchant <span class="amount">0.01 RLUSD</span></h3>
+          <p class="meta">block 9224751 · 22:08:02Z · six seconds after redemption</p>
+          <span class="hash">0x23c4beb9264b7ee3f0e2ef81182c1605f8d7045954aa1c750386e6e243389a6c</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>What the method selector proves</h2>
+    <p>The explorer labels the redemption transactions <code>0x21eb2efb</code>. That
+    label is only a lookup, so it was recomputed from the contract's own function
+    signature rather than trusted:</p>
+<pre><code>keccak256("redeemVoucher((bytes32,uint256),bytes)")[0:4]
+  = 0x21eb2efb        ← matches both transactions</code></pre>
+    <p>The agent called the function it was supposed to call, on the contract AP4M
+    publishes in its own <code>/public/config</code>.</p>
+  </div>
+
+  <div class="section">
+    <h2>Addresses under test</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Role</th><th>Address</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Agent wallet (pays, signs vouchers)</td><td><code>0x37F2F4166646Ea3cea94BB37BaBD88a01F52A7A2</code></td></tr>
+          <tr><td>Merchant payout (receives RLUSD)</td><td><code>0xFf9395aa0918A789B4dC40e7cf147A73c92fcbf8</code></td></tr>
+          <tr><td>PaymentLedger</td><td><code>0xcAB42800A5ECF0D253Fa2581Bb3334B4DAEfaE91</code></td></tr>
+          <tr><td>PooledEscrowVault</td><td><code>0x83DD9cD010eb46e96eceF8F7eB0a18f7845AaBC0</code></td></tr>
+          <tr><td>RLUSD token (ERC-20, 18 dp)</td><td><code>0x27b57a9D0b8d24EB97259c4E2279e45255e016f3</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:1rem">The agent and payout wallets are different addresses,
+    which AP4M requires: the party authorising a payment cannot be the party
+    receiving it.</p>
+  </div>
+
+  <div class="section">
+    <h2>Reproduce it</h2>
+    <p>The verifier takes an RPC endpoint from the environment, so none of this
+    depends on the node used here, or on AP4M being available at all.</p>
+<pre><code>RPC_URL=&lt;your node&gt; node verify-receipt-onchain.mjs \
+  0xcb1f2dabc921537530af35d8686b8aa21e3d8ce3fe9560823f79a471ffc33d9f</code></pre>
+    <p style="margin-top:1rem">It reads the transaction receipt, confirms the
+    destination is the PaymentLedger, decodes the claim and channel IDs from the
+    event log, and finds the RLUSD transfer to the payout wallet in the surrounding
+    blocks.</p>
+  </div>
+
+  <div class="note">
+    <h3>One trap worth knowing</h3>
+    <p>The identifiers listed under <em>Payments and receipts</em> in the AP4M portal
+    are <strong>claim IDs, not transaction hashes</strong>. Passing one to
+    <code>eth_getTransactionByHash</code> returns <code>null</code>, which reads like
+    a missing payment rather than a category error. The transactions were found by
+    reading the agent wallet's own history, then matching the claim IDs in the
+    emitted event logs.</p>
+  </div>
+
+  <div class="section">
+    <h2>Scope</h2>
+    <p>This is XRPL EVM Testnet. The RLUSD here is a test token with no financial
+    value, and the amounts are deliberately small. What the trail demonstrates is the
+    shape of the evidence, not the size of the payment: an autonomous agent authorised
+    a transfer, a contract recorded it, and the funds moved to a third party, with
+    every step checkable by someone who trusts none of the parties involved.</p>
+  </div>
+
+  <footer>
+    Verified 24 October 2026 against block 9224847 and later.
+    Read from <code>rpc.testnet.xrplevm.org</code> and
+    <code>explorer.testnet.xrplevm.org</code>.
+    Timestamps are UTC.
+  </footer>
+
+</div>
