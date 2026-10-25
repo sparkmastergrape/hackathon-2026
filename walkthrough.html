@@ -258,15 +258,20 @@
 
   <div class="section">
     <h2>Before you demo</h2>
-    <p>Run this first. It talks to AP4M but spends nothing, so it is safe to run in
-    front of people and it catches every setup problem we hit:</p>
-<pre><code>node verify-wallets.mjs</code></pre>
-    <p>It exits <code>0</code> only when the agent key matches the address AP4M has
-    registered, the agent has gas, and the agent and merchant are different wallets.
-    If it exits non-zero, do not start the demo — fix what it names.</p>
-<pre><code>node signin-check.cjs</code></pre>
-    <p>Confirms the service side is up and our team session still authenticates.
-    Also free.</p>
+    <p>One command. It spends nothing and changes no chain state, so it is safe to
+    run in front of people — and it catches every setup problem we hit today:</p>
+<pre><code>npm run predemo</code></pre>
+    <p>Twelve checks across three groups: that <code>.env</code> holds the keys and is
+    git-ignored, that the agent key matches the address AP4M has registered and has
+    gas, and that the service is up and our team still authenticates. It ends in one
+    word.</p>
+<pre><code>GO  — all 12 checks passed. Run: node run-ap4m.cjs</code></pre>
+    <p>Anything else prints <code>NO-GO</code> and lists exactly which checks failed
+    and why. <strong>If it says NO-GO, do not start the demo.</strong> Fix what it
+    names — re-running without changing anything will not help.</p>
+    <p>The two underlying checks still exist on their own if you want to narrow a
+    problem: <code>node verify-wallets.mjs</code> for keys, gas and addresses, and
+    <code>node signin-check.cjs</code> for the service side.</p>
 
     <div class="callout">
       <h3>Check the gas before you stand up</h3>

@@ -1,7 +1,7 @@
 # Ledger-gated agent payments on XRPL
 
 A payment agent that cannot move money past a threshold without a human signature on a
-Ledger device — plus five documented defects found in the sponsors' own SDKs and docs
+Ledger device — plus six documented defects found in the sponsors' own SDKs and docs
 while building it.
 
 Built at the Ledger x XRPL hackathon (XRPL Commons / XRP Ledger Foundation / Swell,
@@ -57,8 +57,9 @@ its known limits.
 ### 2. `filings/` — developer-experience defects, with receipts
 
 Track 01 states that bug reports count and that DX feedback is judged as much as code.
-Five defects were found while building, each with a reproduction. Four belong to Ledger,
-one to Mastercard. They do not compete for the same slot.
+Six defects were found while building, each with a reproduction. Four belong to Ledger,
+two to Mastercard. The two sets do not compete for the same slot, so they are ranked
+within each sponsor rather than against each other.
 
 Submission order, strongest first — the ranking rule is that *a filing nobody can argue
 with beats a better filing that needs careful handling*:
@@ -69,7 +70,8 @@ with beats a better filing that needs careful handling*:
 | 2 | [`03-derivation-path.md`](filings/03-derivation-path.md) | Ledger | Two examples on one page that disagree; one uses Bitcoin's coin type for XRP. |
 | 3 | [`02-chain-id-only-mainnet.md`](filings/02-chain-id-only-mainnet.md) | Ledger | A documentation *gap*, not a wrong value. See the note below. |
 | 4 | [`04-clear-signing-payment.md`](filings/04-clear-signing-payment.md) | Ledger | Worth the most, needs the most care. Scoped to `Payment`. Carries screen sets from three devices. |
-| 5 | [`05-ap4m-dead-faucet.md`](filings/05-ap4m-dead-faucet.md) | Mastercard / AP4M | A served config value pointing at a host with no DNS records. |
+| 5 | [`05-ap4m-dead-faucet.md`](filings/05-ap4m-dead-faucet.md) | Mastercard / AP4M | A served config value pointing at a host with no DNS records. One DNS lookup demonstrates it. |
+| 6 | [`06-two-judging-rubrics.md`](filings/06-two-judging-rubrics.md) | Mastercard / AP4M | The integration guide and the workshop deck each self-describe as the judging criteria and score different things. |
 
 `filings/evidence/` holds full device screen sets from Flex, Stax and Apex P (28 files),
 with a capture script that reproduces any of the three runs.
@@ -87,9 +89,10 @@ mainnet. Both chain IDs are measured: `eth_chainId` against
 **Measured.** AP4M agent payments ran end to end on 2026-10-24: two payments of
 0.01 RLUSD settled to the merchant payout wallet, confirmed by reading the RLUSD
 contract directly rather than trusting the service's own view. Both channels closed.
-Budget 20 RLUSD cap, 0.02 used. Five validated testnet transactions exist across the
-two halves of the project, which satisfies the eligibility rule that a project land at
-least one transaction on XRPL or its EVM sidechain.
+Budget 20 RLUSD cap, 0.02 used. Eight validated testnet transactions exist across the
+two halves of the project — six on the EVM sidechain, two on classic XRPL — which
+satisfies the eligibility rule that a project land at least one transaction on XRPL or
+its EVM sidechain. Hashes are in [Transactions](#transactions).
 
 **Measured.** On Speculos, `app-xrp` 2.8.2 displayed the transaction type, account,
 source tag, both invoice bindings, amount, full destination and memo for a `Payment`.
@@ -102,14 +105,83 @@ multisig display, and Ledger's own page says those types are where support break
 also does not contradict the reading that no clear-signing *framework* for XRPL exists —
 no such framework exists.
 
-**Not done.** The approver app has not been run against a physical device or the live
-testnet from the build environment; `npm run e2e` exercises the path with a software key
-instead. The gate has no authentication and keeps state in memory. Non-`Payment`
-transaction types show a "no preview yet" notice and need the device's blind-signing
-setting. None of the five filings has been submitted.
+**Measured.** The approval gate ran end to end against live XRPL testnet on 2026-10-24.
+`npm test` passes 27/27 with no network, `npm run build` is clean, and `npm run e2e`
+exercised all four policy outcomes and landed two real transactions. Hashes below.
 
-**Broken entry point.** `SETUP.md` and the `demo` script both call `run-ap4m.cjs`, which
-is not in the repository. Use the verified commands below until that lands.
+**Not done.** The approver app has not been run against a *physical* device — `npm run e2e`
+substitutes a software key for the device, and the device leg has otherwise only been
+exercised on Speculos. The gate has no authentication and keeps state in memory.
+Non-`Payment` transaction types show a "no preview yet" notice and need the device's
+blind-signing setting. None of the six filings has been submitted.
+
+## Transactions
+
+Every hash below was read from a public node, not from a success flag returned by a
+service. Claim IDs and channel IDs are **not** transaction hashes — passing one to
+`eth_getTransactionByHash` returns `null`, which reads like a missing payment rather than
+a category error. They are listed separately for that reason.
+
+### Classic XRPL — the approval gate
+
+From `npm run e2e` in `ledger-approver/`, 2026-10-24. Explorer:
+`https://testnet.xrpl.org/transactions/<hash>`.
+
+| Case | Outcome | Hash |
+|---|---|---|
+| Small payment, known destination | auto-released from the hot wallet | `045CD5F1B38B07F98C8B018A44644FA8162853C66554478722DF7AED49AD4C53` |
+| Sanctioned destination | `BLOCKED` `SDN_BLOCKED` — nothing submitted | — |
+| Above `PER_TX_CAP_XRP` | `PENDING_APPROVAL` `OVER_TX_CAP` — nothing submitted | — |
+| Above cap, approved and signed | verified, then submitted | `56A4AF7D1DB3AC0E29F993FB0A766176C02070E58F018C314F969CAC2F4026EF` |
+
+The two blocked rows are the point of the project: the gate withheld them, and the ledger
+never saw a transaction to refuse.
+
+### XRPL EVM sidechain — the AP4M agent payments
+
+Chain 1449000. Explorer: `https://explorer.testnet.xrplevm.org/tx/<hash>`. Full
+chain-of-custody, including the claim-ID matching, is in
+[`receipt-trail.html`](receipt-trail.html).
+
+**Payment 1** — 0.01 RLUSD, 22:02–22:03Z, blocks 9224696–9224702:
+
+| Step | Hash |
+|---|---|
+| Agent opens a payment channel | `0x4fcb1061b5f82e1f6ad82aeeb9ae890b432aede1a3f233cb8ae756a01bcc78c5` |
+| Agent redeems a signed voucher (`redeemVoucher`, 164,175 gas) | `0xcb1f2dabc921537530af35d8686b8aa21e3d8ce3fe9560823f79a471ffc33d9f` |
+| Vault pays the merchant 0.01 RLUSD | `0x8a6607770d6e0ae3b36fc2e7413ed00c772a4b75a19dab0258ff1138be7fbf1f` |
+
+**Payment 2** — 0.01 RLUSD, 22:07–22:08Z, blocks 9224747–9224751:
+
+| Step | Hash |
+|---|---|
+| Agent opens a payment channel | `0x95874476bf3d10a1f7b520e0aa3e92b52a0178418beb7da7b792ef4214b96500` |
+| Agent redeems a signed voucher (`redeemVoucher`, 147,087 gas) | `0xe39c8fb5b1868c94db686f89a614710bcc884c16cba8cc5fe9484a99cc5e0bf6` |
+| Vault pays the merchant 0.01 RLUSD | `0x23c4beb9264b7ee3f0e2ef81182c1605f8d7045954aa1c750386e6e243389a6c` |
+
+The claim emitted by `PaymentLedger` is a log inside the redemption transaction, not a
+transaction of its own. The claim IDs that appear in the AP4M portal — `0x99e40a07…` for
+payment 1 and `0xce2bb492…` for payment 2 — were matched against the event-log topics of
+those two redemptions, which is what ties the portal's receipt to the chain.
+
+Verify any of them without AP4M being reachable at all:
+
+```bash
+RPC_URL=<your node> node verify-receipt-onchain.mjs   0xcb1f2dabc921537530af35d8686b8aa21e3d8ce3fe9560823f79a471ffc33d9f
+```
+
+### Contracts and wallets under test
+
+| Role | Address |
+|---|---|
+| Agent wallet (pays, signs vouchers) | `0x37F2F4166646Ea3cea94BB37BaBD88a01F52A7A2` |
+| Merchant payout (receives RLUSD) | `0xFf9395aa0918A789B4dC40e7cf147A73c92fcbf8` |
+| `PaymentLedger` | `0xcAB42800A5ECF0D253Fa2581Bb3334B4DAEfaE91` |
+| `PooledEscrowVault` | `0x83DD9cD010eb46e96eceF8F7eB0a18f7845AaBC0` |
+| RLUSD token (ERC-20, 18 dp) | `0x27b57a9D0b8d24EB97259c4E2279e45255e016f3` |
+
+The agent and payout addresses differ, which AP4M requires: the party authorising a
+payment cannot be the party receiving it.
 
 ## Run it
 
@@ -141,23 +213,39 @@ npm run e2e     # optional — full testnet run with a software key
 
 Then: Connect, Fund, Seed demo payments, open the large payment, Approve, sign on device.
 
-AP4M service side, without spending gas:
+AP4M service side, without spending gas or touching chain state:
 
 ```bash
-node signin-check.cjs
-node check-rlusd.mjs
-node verify-receipt-onchain.mjs
+npm run predemo                 # one pre-demo check; exit 0 = safe to start
+node signin-check.cjs           # service side only
+node check-rlusd.mjs            # RLUSD balances read from the contract
+node verify-receipt-onchain.mjs # re-verify a receipt from a public node
 ```
+
+The AP4M agent payment, which does spend gas and draws on the budget:
+
+```bash
+npm run demo                    # open a channel, pay, settle, close
+CHANNEL_ONLY=1 node run-ap4m.cjs  # stop after the channel is open
+node close-channel.cjs          # close a channel left open
+```
+
+`run-ap4m.cjs` refuses to start if `AGENT_PRIVATE_KEY` is missing, derives an address the
+portal does not have registered, or the agent wallet has no gas. It names the faucet in
+that last case.
 
 ## Layout
 
 | Path | What it is |
 |---|---|
 | `ledger-approver/` | Policy engine, gate service, React approver app, tests |
-| `filings/` | Five DX defect filings and device evidence |
+| `filings/` | Six DX defect filings and device evidence |
 | `vi-replay/` | Verifiable-intent replay fixtures and the audit validator |
 | `context-workspace/` | The staged pipeline the filings were produced through |
-| `*.mjs`, `*.cjs` at root | AP4M agent, x402 examples, wallet and receipt verification |
+| `ap4m-agent.cjs`, `run-ap4m.cjs`, `close-channel.cjs` | The AP4M payment agent and its runner |
+| `predemo.mjs`, `verify-wallets.mjs`, `verify-receipt-onchain.mjs` | Pre-demo and verification checks |
+| `receipt-trail.html`, `walkthrough.html` | The receipt evidence page and the demo walkthrough |
+| other `*.mjs`, `*.cjs` at root | x402 examples, wallet generators, RLUSD helpers |
 | [`AGENTS.md`](AGENTS.md) | Instructions for AI agents working in this repo; AP4M facts |
 | [`SETUP.md`](SETUP.md) | Wallet roles, addresses, MetaMask network, trust lines |
 | [`vi-replay/HANDOFF.md`](vi-replay/HANDOFF.md) | Session state and open decisions |

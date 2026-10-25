@@ -1,6 +1,6 @@
 # Documentation filings
 
-Five defects, each with a receipt. Two sponsors. Nothing here is submitted.
+Six defects, each with a receipt. Two sponsors. Nothing here is submitted.
 
 Read `vi-replay/HANDOFF.md` for the state these came out of.
 
@@ -16,6 +16,7 @@ careful handling.
 | 3 | `02-chain-id-only-mainnet.md` | Ledger, Track 01 | Weaker than first thought. A gap, not a wrong value. See below. |
 | 4 | `04-clear-signing-payment.md` | Ledger, Track 01 | Worth the most, needs the most care. Scope to `Payment` or it is refused. Carries full screen sets from three devices in `evidence/`. |
 | 5 | `05-ap4m-dead-faucet.md` | Mastercard, AP4M | Clean and separate. Does not compete with the Ledger set. |
+| 6 | `06-two-judging-rubrics.md` | Mastercard, AP4M | Two surfaces that each self-describe as the judging criteria and score different things. Scoped so neither is called wrong. |
 
 ## The order changed while drafting, and the reason matters
 

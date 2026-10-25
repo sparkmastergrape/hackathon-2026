@@ -52,4 +52,20 @@ payment, Approve and sign on device. On Speculos, tap through the review and hol
 - The approver is trusted on first use unless `APPROVER_ADDRESS` is set.
 - State is in memory. Restarting the gate clears the queue.
 - Payment only. Other transaction types show a "no preview yet" notice and need the device's Blind signing setting.
-- Not yet run against a physical device or the live testnet from the build environment. Run `npm run e2e` first.
+- Not yet run against a **physical** device. `npm run e2e` covers the same gate path with a
+  software key in place of the device, so the device leg of the flow is the one part still
+  unexercised outside Speculos.
+
+## Measured
+
+`npm run e2e` ran against live XRPL testnet on 2026-10-24 and exited clean. All four cases
+behaved, and the two releases landed real transactions:
+
+| Case | Result |
+| --- | --- |
+| small payment (auto-release) | CONFIRMED `045CD5F1B38B07F98C8B018A44644FA8162853C66554478722DF7AED49AD4C53` |
+| sanctioned destination (hard block) | BLOCKED `SDN_BLOCKED`, nothing submitted |
+| above cap (waits) | `PENDING_APPROVAL` `OVER_TX_CAP`, nothing submitted |
+| above cap (approved, signed, submitted) | CONFIRMED `56A4AF7D1DB3AC0E29F993FB0A766176C02070E58F018C314F969CAC2F4026EF` |
+
+`npm test` passes 27/27 (policy and gate, no network). `npm run build` is clean.

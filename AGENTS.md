@@ -14,7 +14,17 @@ Mastercard XRPL Hackathon: an Agent that pays within a funded budget, and option
 ## Facts to rely on
 
 - Network: XRPL EVM Testnet, chain ID 1449000, RPC `https://rpc.testnet.xrplevm.org`. Gas is paid in XRP, from
-  the [XRPL EVM Testnet faucet](https://faucet.testevm.ripple.com). If `https://hackathon.ap4m.build/llms.txt` lists different values, use those.
+  the [XRPL EVM Testnet faucet](https://faucet.xrplevm.org).
+  **Faucet correction (verified 2026-10-24):** this file and the service's own
+  `GET /public/config` (`network.faucetUrl`, `network.gasSource`) both named
+  `https://faucet.testevm.ripple.com`. That host has no DNS records at all —
+  `dns.lookup` returns `ENOTFOUND` and `curl` cannot connect. `https://faucet.xrplevm.org`
+  resolves (216.150.16.193, 216.150.1.193) and serves; it rate-limits with HTTP 429 under
+  event load, which is not an outage — retry in a browser. Do not "fix" this line back to
+  the service's value without re-checking DNS first. The usual fallback of preferring
+  `https://hackathon.ap4m.build/llms.txt` does not help here: that endpoint returns
+  HTTP 401 without a participant session, so an agent cannot read it. For every other
+  value, `llms.txt` (or the unauthenticated `GET /public/config`) still wins over this file.
 - RLUSD has 18 decimals. Convert with `ethers.parseUnits(value, 18)` and `ethers.formatUnits(value, 18)`; never
   write the zeros by hand.
 - Voucher amounts are cumulative per Channel (the running total), not per payment.

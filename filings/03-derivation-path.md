@@ -1,9 +1,15 @@
 # The XRP signer reference gives two derivation paths that disagree, and one is Bitcoin's
 
 **To:** Ledger — Track 01, Protocol Innovation (Core)
-**Page:** `developers.ledger.com/docs/device-interaction/references/signers/xrp`
+**Page:** `developers.ledger.com/docs/device-interaction/dmk-ts/references/signers/xrp`
 **Sections:** Use Case 2: Get Address → Parameters, and Use Case 3: Sign
 Transaction → Parameters
+**Source:** `LedgerHQ/device-sdk-ts`, `apps/docs/content/docs/references/signers/xrp.mdx`,
+lines 101 and 159 on `develop`
+
+> **Still wrong at source.** Unlike `01-signer-return-type.md`, this is not a
+> publishing lag. Both values are present and disagreeing in `develop` today, so
+> this one is fixable by a one-line PR and we are offering it as one.
 
 ## What the page shows
 
