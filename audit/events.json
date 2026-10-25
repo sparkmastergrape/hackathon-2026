@@ -1,0 +1,585 @@
+{
+  "schema": "agent-audit/1",
+  "run_id": "2026-10-25T08:31:24Z/ledger",
+  "network": "xrpl:1",
+  "events": [
+    {
+      "ts": "2026-10-13T16:38:40Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "2000000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "A9125E0D62278F0F65E2876505824A0A4516EDA006E5B3659DF901C56C659EAF",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-13T16:38:40Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to r9uJJvunaF\u202636EX",
+      "amount": "2000000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "A9125E0D62278F0F65E2876505824A0A4516EDA006E5B3659DF901C56C659EAF",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/A9125E0D62278F0F65E2876505824A0A4516EDA006E5B3659DF901C56C659EAF",
+      "detail": {
+        "destination": "r9uJJvunaFxeJ8sPuH8z2dyDEgXuGF36EX",
+        "signer": "device"
+      }
+    },
+    {
+      "ts": "2026-10-21T15:07:10Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "FE057CC0220CE6E7813E444E36F4DE697B3AE743FF8E4C6A6078820E98A8C750",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/FE057CC0220CE6E7813E444E36F4DE697B3AE743FF8E4C6A6078820E98A8C750",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "software"
+      },
+      "invoice_id": "48E05F166C5F8729C48CCC5121B6C381672294EC79B11FB7C4CC7CA058DC6E28"
+    },
+    {
+      "ts": "2026-10-21T20:59:12Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "391CF7EDC2709CEE79387CF415A87DC6A1845610B1D3DA4C5C8F010F7E0F31D6",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-21T20:59:12Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "80063FFDEF3D0B8A1579C33205DC7795F5E6C6D30066D6BEAC50463038EA1650",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-21T20:59:12Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMx1w1CWwq\u2026VTaK",
+      "amount": "1000000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "391CF7EDC2709CEE79387CF415A87DC6A1845610B1D3DA4C5C8F010F7E0F31D6",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/391CF7EDC2709CEE79387CF415A87DC6A1845610B1D3DA4C5C8F010F7E0F31D6",
+      "detail": {
+        "destination": "rMx1w1CWwqWYojJg7QaMKtKMdEAZnyVTaK",
+        "signer": "device"
+      }
+    },
+    {
+      "ts": "2026-10-21T20:59:12Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMx1w1CWwq\u2026VTaK",
+      "amount": "1000000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "80063FFDEF3D0B8A1579C33205DC7795F5E6C6D30066D6BEAC50463038EA1650",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/80063FFDEF3D0B8A1579C33205DC7795F5E6C6D30066D6BEAC50463038EA1650",
+      "detail": {
+        "destination": "rMx1w1CWwqWYojJg7QaMKtKMdEAZnyVTaK",
+        "signer": "device"
+      }
+    },
+    {
+      "ts": "2026-10-23T01:21:41Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "0EDED2DC4A39FE0569FBF88040BF531ED7B29A41B63BF335FC90B92B1CDADADA",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/0EDED2DC4A39FE0569FBF88040BF531ED7B29A41B63BF335FC90B92B1CDADADA",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "software"
+      },
+      "invoice_id": "9356CA439BDBD264D61F52BFC88B2C9174183D3FA3690668539510F9612B27A3"
+    },
+    {
+      "ts": "2026-10-23T01:22:50Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "67882E97DB5749856BDA3CE1681E46B7503B4EFA96838F42E0ACFB463850740F",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/67882E97DB5749856BDA3CE1681E46B7503B4EFA96838F42E0ACFB463850740F",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "software"
+      },
+      "invoice_id": "3711837C7D7ABB6FAB1F9084B4F5EFE6F55E3ABC91938D6CCE866D90F6EA5588"
+    },
+    {
+      "ts": "2026-10-24T20:59:10Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "8632FAD8F1889889E18FB003BB53E8124EE6E6F77D820D0EF56D5F8BB3E774AF",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-24T20:59:10Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "8632FAD8F1889889E18FB003BB53E8124EE6E6F77D820D0EF56D5F8BB3E774AF",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/8632FAD8F1889889E18FB003BB53E8124EE6E6F77D820D0EF56D5F8BB3E774AF",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "device"
+      },
+      "invoice_id": "9F5651954525B9911BBEDC8AF935C66FA6CCCC04BC6306B6C3D8C7E95F3ED79F"
+    },
+    {
+      "ts": "2026-10-24T21:25:20Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "67AFADBD0D960058BAA5029187B2F3597FC8EF1D810A9FC92A9A9C449FF8BBA6",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-24T21:25:20Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "67AFADBD0D960058BAA5029187B2F3597FC8EF1D810A9FC92A9A9C449FF8BBA6",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/67AFADBD0D960058BAA5029187B2F3597FC8EF1D810A9FC92A9A9C449FF8BBA6",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "device"
+      },
+      "invoice_id": "CA9DB3A6D1AF02F2B5CCC88805C135C305623ABE9C38C12E186F81B47310588C"
+    },
+    {
+      "ts": "2026-10-24T21:29:11Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "9989EABF0FDBC7ED2197609D8A212DF422829235E90CC108DB35C181529E7C08",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-24T21:29:11Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "9989EABF0FDBC7ED2197609D8A212DF422829235E90CC108DB35C181529E7C08",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/9989EABF0FDBC7ED2197609D8A212DF422829235E90CC108DB35C181529E7C08",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "device"
+      },
+      "invoice_id": "880E6F949D31C75FF0BDBC6C82CA5A3D0AAA6782AFAB59FAD947D06C9DF8A1FD"
+    },
+    {
+      "ts": "2026-10-24T21:31:00Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "100000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "935C74E906DE414C01032229FF2384D23FD5325C1FED2D7EE83F0A8C5481EF07",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-24T21:31:00Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rHb9CJAWyB\u2026tyTh",
+      "amount": "100000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "935C74E906DE414C01032229FF2384D23FD5325C1FED2D7EE83F0A8C5481EF07",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/935C74E906DE414C01032229FF2384D23FD5325C1FED2D7EE83F0A8C5481EF07",
+      "detail": {
+        "destination": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+        "signer": "device"
+      }
+    },
+    {
+      "ts": "2026-10-24T21:34:30Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "4C54AEABC76875029A9B8176FDD602B3B8034346B78E9C8FBBAB27E530166E89",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/4C54AEABC76875029A9B8176FDD602B3B8034346B78E9C8FBBAB27E530166E89",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "software"
+      },
+      "invoice_id": "A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1"
+    },
+    {
+      "ts": "2026-10-24T21:34:32Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "7FAD6C35BBDA59A8DB44DBCF58174E097035F92F366415089A09608679C9093F",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/7FAD6C35BBDA59A8DB44DBCF58174E097035F92F366415089A09608679C9093F",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "software"
+      },
+      "invoice_id": "A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1"
+    },
+    {
+      "ts": "2026-10-24T22:54:01Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "D294CFBB4044556133849D953E8D97B91AB6A0659374E832E433762AC9F5170C",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-24T22:54:01Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rHrHDkPA3B\u2026XW9i",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "D294CFBB4044556133849D953E8D97B91AB6A0659374E832E433762AC9F5170C",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/D294CFBB4044556133849D953E8D97B91AB6A0659374E832E433762AC9F5170C",
+      "detail": {
+        "destination": "rHrHDkPA3BFQuTvanB9qEJReVY3txcXW9i",
+        "signer": "device"
+      }
+    },
+    {
+      "ts": "2026-10-24T23:08:41Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "29D0054A85455010BD03E8BF5E2052776719A1E27900399F214DCC668799F8B5",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-24T23:08:41Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rDz1cDyAFm\u2026Qniz",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "29D0054A85455010BD03E8BF5E2052776719A1E27900399F214DCC668799F8B5",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/29D0054A85455010BD03E8BF5E2052776719A1E27900399F214DCC668799F8B5",
+      "detail": {
+        "destination": "rDz1cDyAFm2i9eZfNbySA9x4iYhsSbQniz",
+        "signer": "device"
+      }
+    },
+    {
+      "ts": "2026-10-24T23:26:10Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "0D4C4A05C4E88B71C3278EB01BFA6F7EAEDA120134D181BBC31BEBCC005BE1EA",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-24T23:26:10Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "0D4C4A05C4E88B71C3278EB01BFA6F7EAEDA120134D181BBC31BEBCC005BE1EA",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/0D4C4A05C4E88B71C3278EB01BFA6F7EAEDA120134D181BBC31BEBCC005BE1EA",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "device"
+      },
+      "invoice_id": "BD9813C0F3141E55863C9D8587AA9F70B56265A537F4F11A8419F123EC8F62BB"
+    },
+    {
+      "ts": "2026-10-25T02:50:42Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "75000000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "5968DE3A99BDF0587C93E6C74FAA140FB971FF56FC1F2263EC6054E1A19D2C83",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-25T02:50:42Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rNGtKh8wJH\u2026zLS9",
+      "amount": "75000000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "5968DE3A99BDF0587C93E6C74FAA140FB971FF56FC1F2263EC6054E1A19D2C83",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/5968DE3A99BDF0587C93E6C74FAA140FB971FF56FC1F2263EC6054E1A19D2C83",
+      "detail": {
+        "destination": "rNGtKh8wJHDvRdtkgAHng4E8kd37GBzLS9",
+        "signer": "device"
+      }
+    },
+    {
+      "ts": "2026-10-25T02:57:12Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "76EE59730E3AD20E205DE2525AC6B584AB27BAA8CC83769A1FB637D526D775DB",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-25T02:57:12Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "76EE59730E3AD20E205DE2525AC6B584AB27BAA8CC83769A1FB637D526D775DB",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/76EE59730E3AD20E205DE2525AC6B584AB27BAA8CC83769A1FB637D526D775DB",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "device"
+      },
+      "invoice_id": "DEF7BB8C4B172080D99924F98340E9F1815D19981F14EDEA35D6F483B4DDCFB2"
+    },
+    {
+      "ts": "2026-10-25T03:01:41Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "657CD50A4491DF3FA9AC77A065FAEC180B461E6CDF8C70828282882A0C375F6B",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-25T03:01:41Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "657CD50A4491DF3FA9AC77A065FAEC180B461E6CDF8C70828282882A0C375F6B",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/657CD50A4491DF3FA9AC77A065FAEC180B461E6CDF8C70828282882A0C375F6B",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "device"
+      },
+      "invoice_id": "29F23B177E8EE2AAECF80DB72314493D676BC72E695DFB1F0B23E0A400D1CC37"
+    },
+    {
+      "ts": "2026-10-25T03:14:41Z",
+      "stage": "device_decision",
+      "actor": "owner",
+      "outcome": "ok",
+      "evidence": "inferred",
+      "summary": "a signature from the bound device implies the owner pressed approve",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "B5F7655E3E3C2A855CEC2B6C8DB571A6FA3CC84B19BF84253BBCF446CB593FBB",
+      "detail": {
+        "basis": "the signing key never leaves the device, so a valid signature cannot be produced without a press",
+        "not_observed": "this run did not watch the screen; audit/device-run.json holds observed presses"
+      }
+    },
+    {
+      "ts": "2026-10-25T03:14:41Z",
+      "stage": "settle",
+      "actor": "ledger",
+      "outcome": "ok",
+      "evidence": "measured",
+      "summary": "payment settled to rMNL5bR3CJ\u20263AE3",
+      "amount": "1000",
+      "unit": "drops",
+      "asset": "XRP",
+      "tx_hash": "B5F7655E3E3C2A855CEC2B6C8DB571A6FA3CC84B19BF84253BBCF446CB593FBB",
+      "tx_result": "tesSUCCESS",
+      "explorer_url": "https://testnet.xrpl.org/transactions/B5F7655E3E3C2A855CEC2B6C8DB571A6FA3CC84B19BF84253BBCF446CB593FBB",
+      "detail": {
+        "destination": "rMNL5bR3CJEmJpR6TXbvTMSEwr79RX3AE3",
+        "signer": "device"
+      },
+      "invoice_id": "88139D8F0FC1763F25B801486DF94D4BD0187CA9E6120D2ED7D4CBE04FCC46ED"
+    }
+  ]
+}
