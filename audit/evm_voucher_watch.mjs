@@ -41,9 +41,12 @@
  * INFERRED from that: the three indexed parameters are the first three
  * declared. Corroborated, not proved — decoding the remaining 8 words under
  * that layout yields three well-formed non-zero addresses, and three 18-dp
- * amounts of which two sum exactly to the third (0.067 + 0.025 = 0.092),
- * which is the cumulative voucher accounting AGENTS.md describes. Misaligned
- * decoding does not produce that arithmetic.
+ * amounts where position 5 + position 7 equals position 6 exactly. That held
+ * for 84 of 84 logs read, with no exceptions, which is the cumulative voucher
+ * accounting AGENTS.md describes: a running total, a previous total, and the
+ * payment between them. Misaligned decoding does not produce that arithmetic
+ * once, let alone 84 times. So position 7 is the per-payment amount, which is
+ * what the pane shows; the names remain unknown.
  *
  * The names stay unknown, so this file does not invent any. Decoded values
  * are reported by position and type, and the event carries
