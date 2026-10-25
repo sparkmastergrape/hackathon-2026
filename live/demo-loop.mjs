@@ -83,7 +83,9 @@ if (!open) {
   console.error('allows only 12 channel requests, and a failed request spends one of');
   console.error('them. At 12, requestChannel reverts with PayoutBindingRequestLimitExceeded');
   console.error('and a new allocation has to be funded in the participant portal.');
-  console.error('\nRunning the exchange anyway: the 402 is real, the refusal is real,');
+  console.error('\nRunning the exchange anyway. Expect no 402: the merchant resolves the');
+  console.error('channel before pricing, and one it cannot use is answered 503');
+  console.error('payment_pending_or_unavailable. That refusal is real,');
   console.error('and the pane will show exactly how far it got.\n');
 }
 const channel = open ?? channels[0];
