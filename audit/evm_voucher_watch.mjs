@@ -39,14 +39,32 @@
  * three topics hold.
  *
  * INFERRED from that: the three indexed parameters are the first three
- * declared. Corroborated, not proved — decoding the remaining 8 words under
- * that layout yields three well-formed non-zero addresses, and three 18-dp
- * amounts where position 5 + position 7 equals position 6 exactly. That held
- * for 84 of 84 logs read, with no exceptions, which is the cumulative voucher
- * accounting AGENTS.md describes: a running total, a previous total, and the
- * payment between them. Misaligned decoding does not produce that arithmetic
- * once, let alone 84 times. So position 7 is the per-payment amount, which is
- * what the pane shows; the names remain unknown.
+ * declared. Decoding the remaining 8 words under that layout yields three
+ * well-formed non-zero addresses, and three 18-dp amounts where position 5 +
+ * position 7 equals position 6 exactly. That held for 84 of 84 logs read,
+ * with no exceptions, which is the cumulative voucher accounting AGENTS.md
+ * describes: a running total, a previous total, and the payment between them.
+ *
+ * CROSS-CONFIRMED against AP4M's own receipt, which is an independent source
+ * rather than more of our own arithmetic. For claim
+ * 0xe44fd8ba…, `ap4m.claim-receipt.v1` at
+ * /public/evidence/claims/<claimId>/<settlementDigest>.json states:
+ *
+ *   receipt claimId            == the log's topics[2]
+ *   receipt amount             0.02   == decoded position 7
+ *   receipt cumulativeDisbursed 0.16  == decoded position 6
+ *
+ * and position 5 (0.14) is the difference, as the running total before this
+ * payment. So the ROLES of topics[2] and positions 5, 6 and 7 are confirmed
+ * by the issuer, not merely consistent with themselves. The parameter NAMES
+ * are still unknown and the indexed/non-indexed split is still inference, so
+ * events keep `evidence: "inferred"` for the layout as a whole.
+ *
+ * Note what the receipt does NOT carry: the redeemVoucher transaction. For
+ * that claim the receipt names a payout (block 9231092) and a settlement
+ * (block 9231094), while the VoucherRedeemed log sits at block 9231091. The
+ * receipt and this watcher are complementary, and neither alone shows the
+ * whole sequence.
  *
  * The names stay unknown, so this file does not invent any. Decoded values
  * are reported by position and type, and the event carries
@@ -180,6 +198,18 @@ function toEvent(log, timestampSeconds) {
         'non-indexed split inferred from 4 topics + 8 data words = 11 ' +
         'parameters, and corroborated by well-formed addresses and ' +
         'cumulative amounts that sum',
+      cross_confirmed:
+        "roles checked against AP4M's own ap4m.claim-receipt.v1, an " +
+        'independent source: receipt claimId == topics[2], receipt amount == ' +
+        'position 7, receipt cumulativeDisbursed == position 6. Verified for ' +
+        'claim 0xe44fd8ba…. The names are still unknown.',
+      receipt_url_shape:
+        'https://hackathon.ap4m.build/public/evidence/claims/<claimId>/' +
+        '<settlementDigest>.json — neither of those is a transaction hash, ' +
+        'so neither resolves on an explorer. The explorer-viewable hashes ' +
+        'are inside the receipt, under settlementTransaction and ' +
+        'payoutObservation, and the redeemVoucher transaction (this event) ' +
+        'is in neither.',
       names_unknown:
         'PaymentLedger is unverified on the explorer and the SDK ships no ' +
         'ABI for this event, so no parameter names exist to report',
