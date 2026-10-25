@@ -8,7 +8,9 @@
     "predemo": "node predemo.mjs",
     "demo": "node run-ap4m.cjs",
     "mcp:mastercard": "node server.mjs",
-    "demo:mandate": "node demo/agent-mandate.mjs"
+    "demo:mandate": "node demo/agent-mandate.mjs",
+    "x402:merchant": "node x402-merchant.mjs",
+    "x402:agent": "node x402-agent.mjs"
   },
   "repository": {
     "type": "git",

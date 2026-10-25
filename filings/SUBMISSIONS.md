@@ -1,6 +1,37 @@
 # Ready to submit
 
-Prepared 2026-10-25. Nothing here has been sent. Each block is the exact text to
+**Status 2026-10-25: two of six are FILED.**
+
+| Filing | Channel | Status |
+|---|---|---|
+| `03-derivation-path.md` | PR | **FILED** — https://github.com/LedgerHQ/device-sdk-ts/pull/2050 |
+| `01-signer-return-type.md` | Issue | **FILED** — https://github.com/LedgerHQ/device-sdk-ts/issues/2051 |
+| `02`, `04` | event page, no repo | not sent — needs a human channel |
+| `05`, `06` | Mastercard AP4M | not sent — needs a human channel |
+
+### One step left on PR #2050
+
+The commit is **unsigned**. `CONTRIBUTING.md` requires signed commits for
+protected branches, enforced by GitHub rulesets. A GPG signature is the
+submitter's own assertion, so it was left for you:
+
+```bash
+cd /c/Users/JD/AppData/Local/Temp/dsdk
+git config user.signingkey E333DC5D1A56AF6F
+git commit --amend --no-edit -S
+git push --force-with-lease
+```
+
+For the signature to show as **Verified**, the key's email must be a verified
+email on the GitHub account that opened the PR.
+
+CI on #2050 at time of filing: Socket and all four Wiz scanners pass; the two
+Vercel preview deploys fail with *"Authorization required to deploy"*, which is
+Ledger-side fork permissions, not a defect in the change.
+
+---
+
+Prepared 2026-10-25. The rest has not been sent. Each block is the exact text to
 post, and the channel it posts to.
 
 The event page names no submission channel — no form, no email, no repository, no

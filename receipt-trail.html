@@ -263,26 +263,27 @@
 
   <p class="eyebrow">AP4M · XRPL EVM Testnet · chain 1449000</p>
   <h1>RLUSD Receipt Trail</h1>
-  <p class="lede">Two agent payments, verified from chain data alone. Every claim the
+  <p class="lede">Three agent payments, verified from chain data alone. Every claim the
   AP4M service makes about these receipts is restated here as something the ledger
-  itself emitted, readable from any RPC node.</p>
+  itself emitted, readable from any RPC node. The third is the one no human touched:
+  the agent met an HTTP 402, priced it against its own budget, and paid.</p>
 
   <div class="verdict">
     <div class="item">
       <span class="k">Payments</span>
-      <span class="v">2 settled</span>
+      <span class="v">3 settled</span>
     </div>
     <div class="item">
       <span class="k">Total paid</span>
-      <span class="v">0.02 RLUSD</span>
+      <span class="v">0.07 RLUSD</span>
     </div>
     <div class="item">
       <span class="k">Claim IDs matched</span>
-      <span class="v">2 / 2</span>
+      <span class="v">3 / 3</span>
     </div>
     <div class="item">
       <span class="k">Payouts traced</span>
-      <span class="v">2 / 2</span>
+      <span class="v">3 / 3</span>
     </div>
   </div>
 
@@ -298,7 +299,7 @@
 
   <div class="section">
     <h2>Claim against chain</h2>
-    <p>Both payments, each checked the same way. The right column of each pair was
+    <p>All three payments, each checked the same way. The right column of each pair was
     read from <code>rpc.testnet.xrplevm.org</code> and the public explorer, with no
     AP4M endpoint involved.</p>
 
@@ -369,6 +370,43 @@
         </dl>
       </div>
     </div>
+
+    <p class="pair-label">Payment 3 · x402 · 03:37Z, 25 Oct</p>
+    <div class="compare">
+      <div class="col claimed">
+        <p class="src">What the 402 quoted and the agent reported</p>
+        <dl>
+          <dt>Price in the challenge</dt>
+          <dd>0.05 RLUSD · <code>50000000000000000</code> base units</dd>
+          <dt>Agent's own ceiling</dt>
+          <dd>0.10 RLUSD, no human approval below it</dd>
+          <dt>Claim ID</dt>
+          <dd><span class="hash">0x892509cca4ca801545f7e8ed5db91b58e5fc0d663b05fe73ae9e3410670fe576</span></dd>
+          <dt>Channel</dt>
+          <dd><span class="hash">0x6d824358aa10ae33fb4ccf7deaab5e54147d4682963faeb4334518f2e26f320b</span></dd>
+          <dt>Outcome returned</dt>
+          <dd>redemption Confirmed · resource released</dd>
+        </dl>
+      </div>
+      <div class="col chain">
+        <p class="src">What the ledger emitted</p>
+        <dl>
+          <dt>Redemption status</dt>
+          <dd>success · block 9228163</dd>
+          <dt>RLUSD transferred</dt>
+          <dd><span class="amount">0.05 RLUSD</span> vault to payout wallet</dd>
+          <dt>Claim ID in event log</dt>
+          <dd><span class="hash">0x892509cca4ca801545f7e8ed5db91b58e5fc0d663b05fe73ae9e3410670fe576</span></dd>
+          <dt>Channel in event log</dt>
+          <dd><span class="hash">0x6d824358aa10ae33fb4ccf7deaab5e54147d4682963faeb4334518f2e26f320b</span></dd>
+          <dt>Cumulative on chain</dt>
+          <dd>0.10 → 0.15 RLUSD on one channel</dd>
+        </dl>
+      </div>
+    </div>
+    <p style="margin-top:1.25rem">The amount settled is the amount quoted in the 402,
+    and the claim ID the agent printed is the one in the event. Nothing in the left
+    column was taken on trust.</p>
   </div>
 
   <div class="section">
@@ -453,14 +491,87 @@
   </div>
 
   <div class="section">
+    <h2>Payment 3 — chain of custody</h2>
+    <p>The x402 purchase. Two differences from the first two: the channel was already
+    open and had been paid on twice before, and the <em>merchant</em> submitted the
+    redemption rather than the agent. The agent only ever signed.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n">01</div>
+        <div class="body">
+          <h3>Merchant refuses and names a price</h3>
+          <p class="meta">off chain · HTTP 402 · quote 0.05 RLUSD, bound to the channel</p>
+          <p style="margin:0.45rem 0 0;font-size:0.92rem">The only step here that is not
+          on the ledger. It is what the agent decided against.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">02</div>
+        <div class="body">
+          <h3>Merchant submits the agent's signed voucher</h3>
+          <p class="meta">block 9228163 · 03:36:57Z · 112,899 gas · method 0x21eb2efb</p>
+          <span class="hash">0xbf36acf4f215a0b8205f8ba917e1a85ee51f5871b6ea7745124fff98a3b77231</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">03</div>
+        <div class="body">
+          <h3>PaymentLedger emits the claim</h3>
+          <p class="meta">same transaction · VoucherRedeemed · agent 0x37F2F416… · 65-byte signature · 0.10 → 0.15 cumulative</p>
+          <span class="hash">0x892509cca4ca801545f7e8ed5db91b58e5fc0d663b05fe73ae9e3410670fe576</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">04</div>
+        <div class="body">
+          <h3>Vault pays the merchant <span class="amount">0.05 RLUSD</span></h3>
+          <p class="meta">block 9228165 · 03:37:08Z · eleven seconds after redemption</p>
+          <span class="hash">0xc0d35a87a865475084143258b3040d51e69b11e86b4a593df896651b6cf91e33</span>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:1.5rem">Channel <code>0x6d824358…</code> went on to carry
+    further payments after this one, so its cumulative total is higher now than the
+    0.15 recorded above. The figures on this page are each read at a stated block.</p>
+    <p>The event also carries the merchant ID
+    <code>0xeff8b128…</code> and names the submitter, so the ledger records who sent
+    the transaction separately from who authorised the payment. Those are different
+    parties here, and the record shows it.</p>
+  </div>
+
+  <div class="section">
     <h2>What the method selector proves</h2>
     <p>The explorer labels the redemption transactions <code>0x21eb2efb</code>. That
     label is only a lookup, so it was recomputed from the contract's own function
     signature rather than trusted:</p>
 <pre><code>keccak256("redeemVoucher((bytes32,uint256),bytes)")[0:4]
-  = 0x21eb2efb        ← matches both transactions</code></pre>
-    <p>The agent called the function it was supposed to call, on the contract AP4M
+  = 0x21eb2efb        ← matches all three transactions</code></pre>
+    <p>The function called is the one it was supposed to be, on the contract AP4M
     publishes in its own <code>/public/config</code>.</p>
+  </div>
+
+  <div class="note">
+    <h3>Why the payout wallet holds more than 0.07 RLUSD</h3>
+    <p>The three payments above are the ones checked end to end, claim ID by claim ID.
+    They are <strong>not</strong> the whole ledger. At block 9228805 the wallet had
+    received sixteen payments totalling 0.29 RLUSD, sent 0.02 back out, and held
+    <strong>0.27 RLUSD</strong> — which reconciles exactly:</p>
+<pre><code>redeemed on chain          0.29 RLUSD   16 VoucherRedeemed events
+into the payout wallet     0.29 RLUSD   16 Transfer events
+out of the payout          0.02 RLUSD    1 Transfer event
+balanceOf reports          0.27 RLUSD   = 0.29 − 0.02  ✓</code></pre>
+    <p>The rest are other runs of the same demo, on channels this page does not
+    document, plus two redemptions spent finding the bugs in the x402 merchant — one
+    of which was orphaned when its merchant state was deleted before the retained
+    payment could replay: paid for, never delivered. <strong>No cause is claimed for
+    the 0.02 that left the wallet.</strong> It is in the reconciliation, and that is
+    all that is known about it.</p>
+    <p>An earlier version of this page explained the gap as settlement of the closed
+    channels. That was invented, and reading the chain disproved it. The totals move
+    whenever anyone runs the demo, which is why each one here is quoted with the block
+    it was read at.</p>
   </div>
 
   <div class="section">
@@ -481,7 +592,10 @@
     </div>
     <p style="margin-top:1rem">The agent and payout wallets are different addresses,
     which AP4M requires: the party authorising a payment cannot be the party
-    receiving it.</p>
+    receiving it. In payment 3 the payout wallet also acts as the merchant's
+    submitter, paying the gas for its own redemption — which is why the
+    <code>VoucherRedeemed</code> event records an agent and a submitter as separate
+    fields.</p>
   </div>
 
   <div class="section">
@@ -493,7 +607,7 @@
     <p style="margin-top:1rem">It reads the transaction receipt, confirms the
     destination is the PaymentLedger, decodes the claim and channel IDs from the
     event log, and finds the RLUSD transfer to the payout wallet in the surrounding
-    blocks.</p>
+    blocks. Pass <code>0xbf36acf4…</code> instead to check the x402 payment.</p>
   </div>
 
   <div class="note">
@@ -513,10 +627,14 @@
     shape of the evidence, not the size of the payment: an autonomous agent authorised
     a transfer, a contract recorded it, and the funds moved to a third party, with
     every step checkable by someone who trusts none of the parties involved.</p>
+    <p>Payment 3 adds the part that matters for autonomy. The first two were driven
+    from a script that already knew what to pay. The third began with a refusal the
+    agent had not been told to expect, and the decision to pay was its own.</p>
   </div>
 
   <footer>
-    Verified 24 October 2026 against block 9224847 and later.
+    Payments 1 and 2 verified 24 October 2026 against block 9224847 and later;
+    payment 3 verified 25 October against block 9228569.
     Read from <code>rpc.testnet.xrplevm.org</code> and
     <code>explorer.testnet.xrplevm.org</code>.
     Timestamps are UTC.

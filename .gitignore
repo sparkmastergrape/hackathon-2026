@@ -160,3 +160,21 @@ vi-replay/*.json
 # "Proprietary and Confidential" and must not be committed to a public repo;
 # the AP4M SDK helpers here are re-downloadable from the service.
 New folder/
+
+# testnet wallet secrets written by prep/fund_testnet.py — never commit
+prep/wallets.json
+**/wallets.json
+
+# fork-session device captures — withheld by JD, not for a public repo
+speculos-xrp/device-screens.png
+speculos-xrp/shots/
+.x402-merchant-state/
+.x402-agent-state/
+
+# x402 state dirs from any gate or probe run (sqlite, locks) — never committed
+*-merchant-state/
+*-agent-state/
+
+# refusal-case scratch snapshots (regenerate with refusal-witness.mjs)
+.refusal-witness-*.json
+*-sdk-state/

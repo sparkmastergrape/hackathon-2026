@@ -58,8 +58,10 @@ function save(file, value) {
   const fd = openSync(temporary, 'wx', 0o600);
   try { writeFileSync(fd, JSON.stringify(value) + '\n'); fsyncSync(fd); } finally { closeSync(fd); }
   renameSync(temporary, file);
-  const directory = openSync(dirname(file), 'r');
-  try { fsyncSync(directory); } finally { closeSync(directory); }
+  // Windows cannot fsync a directory handle (EPERM); the rename above is already atomic there.
+  let directory;
+  try { directory = openSync(dirname(file), 'r'); } catch (error) { if (error.code !== 'EPERM' && error.code !== 'EISDIR' && error.code !== 'EACCES') throw error; return; }
+  try { fsyncSync(directory); } catch (error) { if (error.code !== 'EPERM' && error.code !== 'EINVAL') throw error; } finally { closeSync(directory); }
 }
 
 async function request(url, headers, requestFetch) {
@@ -268,7 +270,8 @@ export function createX402Merchant(config) {
     if (closing || queued >= 32) return send(response, 503, { error: 'merchant_busy' });
     if (incoming.method !== 'GET' || incoming.url !== '/resource') return send(response, 404, { error: 'not_found' });
     queued++;
-    const work = queue.then(() => handle(incoming, response)).catch(() => {
+    const work = queue.then(() => handle(incoming, response)).catch((error) => {
+      console.error("[merchant] request failed:", error?.stack ?? error);
       send(response, 503, { error: 'payment_pending_or_unavailable', retrySamePayment: true });
     }).finally(() => { queued--; });
     queue = work;
@@ -347,9 +350,15 @@ export function createX402Merchant(config) {
       // never blindly rebroadcast.
       db.prepare('INSERT INTO payments(voucher_digest,channel_id,value) VALUES (?,?,?)').run(voucherDigest, channelId, canonicalJson(retained));
       try {
-        retained.transactionHash = (await config.submitter.sendTransaction({ to: plan.transaction.to, data: plan.transaction.data, value: 0n })).hash;
+        const sent = await config.submitter.sendTransaction({ to: plan.transaction.to, data: plan.transaction.data, value: 0n });
+        retained.transactionHash = sent.hash;
         db.prepare('UPDATE payments SET value=? WHERE voucher_digest=?').run(canonicalJson(retained), voucherDigest);
-      } catch { /* Reconcile a lost submission response through canonical events below. */ }
+        // Wait for inclusion before verifying. An RPC can still answer "unknown" for a
+        // transaction it has only just accepted, and the verifier reads that as a mismatch.
+        await sent.wait(1);
+      } catch (error) { /* Reconcile a lost submission response through canonical events below. */
+        console.error("[merchant] redemption submit failed:", error?.shortMessage ?? error?.message ?? error);
+      }
     }
     const payment = verifyX402Payment(paymentContext, retained.challenge.value, retained.challenge.digest, retained.header);
     let transactionHash = retained.transactionHash;

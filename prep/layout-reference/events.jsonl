@@ -1,0 +1,33 @@
+{"ts": "2026-10-23T01:19:29.500+00:00", "beat": "1 \u00b7 delegation", "pane": "agent", "kind": "info", "message": "owner grants authority"}
+{"ts": "2026-10-23T01:19:29.500+00:00", "beat": "1 \u00b7 delegation", "pane": "policy", "kind": "hold", "message": "awaiting owner signature"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "1 \u00b7 delegation", "pane": "policy", "kind": "allow", "message": "L2 delegation signed"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "1 \u00b7 delegation", "pane": "policy", "kind": "info", "message": "agent: rAGENT\u2026bH2vz"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "1 \u00b7 delegation", "pane": "policy", "kind": "info", "message": "ceiling: 5.000000 XRP"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "1 \u00b7 delegation", "pane": "policy", "kind": "info", "message": "assets: XRP \u00b7 valid 1h"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "1 \u00b7 delegation", "pane": "ledger", "kind": "info", "message": "nothing submitted \u2014 this is the grant"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "2 \u00b7 unattended", "pane": "agent", "kind": "think", "message": "I need 7-day volatility"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "2 \u00b7 unattended", "pane": "agent", "kind": "think", "message": "GET /market-data \u2192 402"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "2 \u00b7 unattended", "pane": "policy", "kind": "info", "message": "quoted 1000 drops"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "2 \u00b7 unattended", "pane": "policy", "kind": "allow", "message": "under ceiling \u00b7 known payee"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "2 \u00b7 unattended", "pane": "agent", "kind": "think", "message": "signing payment"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "2 \u00b7 unattended", "pane": "ledger", "kind": "tx", "message": "Payment 1000 drops \u00b7 fee 12", "url": "https://testnet.xrpl.org/transactions/A1B2C3D4E5F60718293A4B5C6D7E8F901234567890ABCDEF1234567890ABCDEF", "hash": "A1B2C3D4\u2026"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "2 \u00b7 unattended", "pane": "ledger", "kind": "info", "message": "validated in 3.8s"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "2 \u00b7 unattended", "pane": "agent", "kind": "think", "message": "got the data, continuing"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "3 \u00b7 metered  (CUT THIS FIRST)", "pane": "agent", "kind": "think", "message": "inference priced upto 0.5 XRP"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "3 \u00b7 metered  (CUT THIS FIRST)", "pane": "policy", "kind": "allow", "message": "authorising Check \u00b7 SendMax 0.5"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "3 \u00b7 metered  (CUT THIS FIRST)", "pane": "ledger", "kind": "tx", "message": "CheckCreate \u00b7 ceiling 500000 drops"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "3 \u00b7 metered  (CUT THIS FIRST)", "pane": "agent", "kind": "think", "message": "handler used 1,840 tokens"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "3 \u00b7 metered  (CUT THIS FIRST)", "pane": "policy", "kind": "info", "message": "metered \u2192 184000 drops"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "3 \u00b7 metered  (CUT THIS FIRST)", "pane": "ledger", "kind": "tx", "message": "CheckCash 184000 \u2014 not 500000"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "3 \u00b7 metered  (CUT THIS FIRST)", "pane": "ledger", "kind": "info", "message": "ledger would refuse above SendMax"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "agent", "kind": "think", "message": "bulk feed quoted 12.0 XRP"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "policy", "kind": "block", "message": "12.0 XRP > ceiling 5.0"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "policy", "kind": "hold", "message": "requires_confirmation"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "agent", "kind": "think", "message": "waiting \u2014 not cancelled"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "policy", "kind": "block", "message": "owner DECLINED"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "ledger", "kind": "info", "message": "nothing submitted \u00b7 nothing to reverse"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "agent", "kind": "think", "message": "retrying at 0.8 XRP"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "policy", "kind": "allow", "message": "under ceiling \u00b7 approved"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "4 \u00b7 THE VETO", "pane": "ledger", "kind": "tx", "message": "Payment 800000 drops"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "5 \u00b7 audit", "pane": "agent", "kind": "info", "message": "4 decisions \u00b7 3 settled \u00b7 1 declined"}
+{"ts": "2026-10-23T01:19:29.501+00:00", "beat": "5 \u00b7 audit", "pane": "ledger", "kind": "info", "message": "every hash is public \u2014 read events.jsonl"}

@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Desk — the veto card</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --ground: #070A09;
+    --panel: #0C110F;
+    --panel-2: #0A0D0C;
+    --line: #18211D;
+    --line-2: #141D19;
+    --edge: #22302A;
+    --green: #4FE39B;
+    --green-dim: #0D1812;
+    --text: #E7EFEA;
+    --text-2: #BCC9C2;
+    --muted: #8CA096;
+    --faint: #7B8F85;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--text);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px;
+  }
+  a { color: var(--green); }
+  a:hover { color: #8BF0C0; }
+  table { border-collapse: collapse; width: 100%; min-width: 820px; }
+  th {
+    text-align: left; padding: 11px 14px; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  th.actor { color: var(--green); font-weight: 600; }
+  td {
+    padding: 11px 14px; font-family: var(--mono); font-size: 12px;
+    border-bottom: 1px solid var(--line-2); white-space: nowrap;
+  }
+  tr.refused { background: var(--green-dim); }
+  tr.refused td.actor, tr.refused td.outcome { color: var(--green); }
+  td.actor { font-size: 13px; font-weight: 700; color: var(--text-2); }
+  td.outcome, td.time, td.evidence { color: var(--muted); }
+  td.amount { text-align: right; color: var(--text); }
+  .inferred { color: var(--muted); }
+  .inferred .word { color: var(--text-2); }
+  .shell { display: flex; flex-wrap: wrap; align-items: flex-start; min-height: 100vh; }
+  nav {
+    flex: 1 1 210px; min-width: 190px; max-width: 250px;
+    padding: 28px 18px 40px 24px; border-right: 1px solid var(--line);
+  }
+  main { flex: 999 1 620px; min-width: 0; padding: 28px 28px 56px; }
+  aside {
+    flex: 1 1 320px; min-width: 280px; max-width: 400px;
+    padding: 28px 24px 40px; border-left: 1px solid var(--line);
+  }
+  .rail-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 10px; border-radius: 4px; color: var(--text-2);
+    text-decoration: none; font-size: 14px;
+  }
+  .rail-row.on { background: #101915; color: var(--text); }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: #35463E; display: inline-block; }
+  .rail-row.on .dot { background: var(--green); }
+  .rail-row .n { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .tile { padding: 16px 16px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  .tile .label { font-size: 12px; line-height: 1.45; color: var(--muted); min-height: 34px; }
+  .tile .big { font-family: var(--mono); font-size: 34px; font-weight: 500; margin-top: 6px; }
+  .tile .sub { font-size: 12px; color: var(--faint); margin-top: 4px; }
+  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 22px 22px 26px; margin-bottom: 20px; }
+  dl { margin: 0; }
+  dl > div { padding: 11px 0; border-bottom: 1px solid var(--line); }
+  dl > div:last-child { border-bottom: 0; }
+  dt { font-size: 12px; color: var(--muted); }
+  dd { margin: 5px 0 0; font-family: var(--mono); font-size: 13px; word-break: break-all; }
+  .bar-track { height: 7px; border-radius: 2px; background: var(--line-2); }
+  .bar-fill { height: 7px; border-radius: 2px; background: var(--green); }
+  .scroller { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+  .kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .claim { padding: 14px 15px; background: #0C1611; border: 1px solid var(--edge); border-radius: 6px; }
+  .note { font-size: 12px; line-height: 1.7; color: var(--faint); }
+  @media (max-width: 900px) { nav, aside { max-width: none; border: 0; } }
+</style>
+</head>
+<body>
+
+<div class="shell" id="shell" hidden>
+  <nav aria-label="Sections">
+    <div class="kicker" style="margin-bottom: 18px">The Desk</div>
+    <a class="rail-row on" href="#decisions"><span style="display:flex;align-items:center;gap:9px"><span class="dot"></span>Payments</span><span class="n" id="r-pay">—</span></a>
+    <a class="rail-row" href="#decisions"><span style="display:flex;align-items:center;gap:9px"><span class="dot"></span>Refusals</span><span class="n" id="r-ref">—</span></a>
+    <a class="rail-row" href="#decisions"><span style="display:flex;align-items:center;gap:9px"><span class="dot"></span>Inferred</span><span class="n" id="r-inf">—</span></a>
+    <a class="rail-row" href="#card"><span style="display:flex;align-items:center;gap:9px"><span class="dot"></span>Counterparties</span><span class="n" id="r-cp">—</span></a>
+    <a class="rail-row" href="#decisions"><span style="display:flex;align-items:center;gap:9px"><span class="dot"></span>Ledger</span><span class="n" id="r-net">—</span></a>
+    <div style="margin-top:26px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;line-height:1.6;color:var(--faint)">
+      Events in this file<br>
+      <span class="n" style="font-family:var(--mono);color:var(--green);font-size:14px" id="r-count">—</span><br>
+      agent-audit/1
+    </div>
+  </nav>
+
+  <main>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;margin-bottom:22px">
+      <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-0.01em">Agent Desk</h1>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--muted)" id="asof">—</div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><div class="label">Settled payments</div><div class="big" id="k-settled">—</div><div class="sub" id="k-settled-sub">—</div></div>
+      <div class="tile"><div class="label">Refusals, by someone other than the agent</div><div class="big" style="color:var(--green)" id="k-ref">—</div><div class="sub" id="k-ref-sub">—</div></div>
+      <div class="tile"><div class="label">Largest single payment</div><div class="big" id="k-max">—</div><div class="sub">drops</div></div>
+      <div class="tile"><div class="label">Rows marked inferred</div><div class="big" id="k-inf">—</div><div class="sub">shown, never hidden</div></div>
+    </div>
+
+    <section class="card" id="card">
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+        <div style="display:flex;gap:13px;align-items:flex-start">
+          <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:#04120B;background:var(--green);border-radius:4px;padding:5px 7px">L9</span>
+          <span>
+            <span style="display:block;font-size:19px;font-weight:600">Where it paid</span>
+            <span style="display:block;font-size:12px;color:var(--muted);margin-top:3px" id="payee-sub">—</span>
+          </span>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:34px">
+        <dl style="flex:1 1 250px;min-width:0" id="facts"></dl>
+        <div style="flex:1 1 300px;min-width:0">
+          <div id="payees"></div>
+          <p class="note" style="margin:18px 0 0;padding-top:14px;border-top:1px solid var(--line)">
+            Read from the public ledger. Nothing here was reported by the agent &mdash;
+            <span style="font-family:var(--mono)">audit/emit_from_ledger.py</span> queries the same
+            <span style="font-family:var(--mono)">account_tx</span> anyone can.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="decisions">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+        <h2 style="margin:0;font-size:17px;font-weight:600">Every decision, in order</h2>
+        <div style="font-size:12px;color:var(--faint)" id="tablemeta">—</div>
+      </div>
+      <div class="scroller">
+        <table>
+          <thead><tr>
+            <th scope="col">Time</th><th scope="col">Stage</th><th scope="col" class="actor">Actor</th>
+            <th scope="col">Outcome</th><th scope="col" style="text-align:right">Amount</th>
+            <th scope="col">Evidence</th><th scope="col">Transaction</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="note" style="margin:14px 0 0;max-width:780px" id="actor-note"></p>
+    </section>
+  </main>
+
+  <aside aria-label="Inspector">
+    <div class="kicker" style="margin-bottom:16px">Inspector</div>
+    <div style="font-size:13px;color:var(--muted)" id="i-label">—</div>
+    <div style="font-family:var(--mono);font-size:42px;font-weight:500;color:var(--green);line-height:1.1;margin:6px 0 4px" id="i-big">—</div>
+    <div style="font-size:12px;color:var(--faint);margin-bottom:20px" id="i-sub">—</div>
+
+    <div class="claim" style="margin-bottom:18px">
+      <div class="kicker" style="color:var(--green);margin-bottom:8px">Claims</div>
+      <p style="margin:0;font-size:13px;line-height:1.6" id="i-claim">—</p>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div class="kicker" style="margin-bottom:8px" id="i-ev-head">Evidence</div>
+      <p style="margin:0;font-size:12px;line-height:1.65;color:var(--text-2)" id="i-ev">—</p>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div class="kicker" style="margin-bottom:8px">Excludes</div>
+      <ul style="margin:0;padding-left:17px;font-size:12px;line-height:1.7;color:var(--text-2)">
+        <li>Transaction types other than Payment. None was tested.</li>
+        <li>Physical hardware. The device runs were on an emulated Nano X.</li>
+        <li>Any claim that the ledger enforces invoice uniqueness. It does not.</li>
+      </ul>
+    </div>
+
+    <div style="padding-top:16px;border-top:1px solid var(--line)">
+      <div class="kicker" style="margin-bottom:10px">Essentials</div>
+      <div id="essentials"></div>
+    </div>
+  </aside>
+</div>
+
+<div id="fail" hidden style="padding:48px 32px;max-width:640px">
+  <h1 style="margin:0 0 14px;font-size:22px;font-weight:600">No event file</h1>
+  <p style="line-height:1.7;color:var(--text-2)" id="failmsg"></p>
+  <p style="line-height:1.7;color:var(--text-2)">
+    Produce one, then serve this folder &mdash; a browser will not read a sibling file over <code>file://</code>:
+  </p>
+  <pre style="font-family:var(--mono);font-size:12px;color:var(--green);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;overflow-x:auto">py audit/emit_from_ledger.py
+py -m http.server 8800
+# then open http://localhost:8800/audit/pane.html</pre>
+</div>
+
+<script>
+const DROPS = 1000000;
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+function shortHash(h) { return h.length > 14 ? h.slice(0, 8) + '…' + h.slice(-4) : h; }
+function shortAddr(a) { return a.length > 18 ? a.slice(0, 10) + '…' + a.slice(-4) : a; }
+function xrp(drops) {
+  const n = Number(drops);
+  return Number.isFinite(n) ? (n / DROPS).toFixed(6).replace(/0+$/, '').replace(/\.$/, '') + ' XRP' : String(drops);
+}
+
+function render(doc, sourceNote) {
+  const ev = Array.isArray(doc.events) ? doc.events : [];
+  const settled = ev.filter(e => e.stage === 'settle' && e.outcome === 'ok');
+  const refused = ev.filter(e => e.outcome === 'refused');
+  const inferred = ev.filter(e => e.evidence === 'inferred');
+  const amounts = settled.map(e => Number(e.amount)).filter(Number.isFinite);
+  const payees = {};
+  for (const e of settled) {
+    const d = (e.detail && e.detail.destination) || 'unknown';
+    payees[d] = (payees[d] || 0) + (Number(e.amount) || 0);
+  }
+  const payeeRows = Object.entries(payees).sort((a, b) => b[1] - a[1]);
+  const top = payeeRows.length ? payeeRows[0][1] : 1;
+
+  document.getElementById('r-pay').textContent = settled.length;
+  document.getElementById('r-ref').textContent = refused.length;
+  document.getElementById('r-inf').textContent = inferred.length;
+  document.getElementById('r-cp').textContent = payeeRows.length;
+  document.getElementById('r-net').textContent = doc.network || '—';
+  document.getElementById('r-count').textContent = ev.length;
+
+  document.getElementById('asof').textContent =
+    'run ' + (doc.run_id || '—') + ' · ' + (doc.network || '—');
+
+  document.getElementById('k-settled').textContent = settled.length;
+  document.getElementById('k-settled-sub').textContent =
+    amounts.length ? xrp(amounts.reduce((a, b) => a + b, 0)) + ' in all' : '—';
+  document.getElementById('k-ref').textContent = refused.length;
+  document.getElementById('k-ref-sub').textContent = refused.length
+    ? [...new Set(refused.map(e => e.actor))].join(', ')
+    : 'none in this file';
+  document.getElementById('k-max').textContent = amounts.length ? Math.max(...amounts) : '—';
+  document.getElementById('k-inf').textContent = inferred.length;
+
+  const times = ev.map(e => e.ts).filter(Boolean).sort();
+  document.getElementById('facts').innerHTML = [
+    ['Network', doc.network || '—'],
+    ['Events in file', ev.length + '  (' + [...new Set(ev.map(e => e.stage))].length + ' stages)'],
+    ['First and last event', times.length ? times[0] + ' → ' + times[times.length - 1] : '—'],
+    ['Counterparties', String(payeeRows.length)],
+    ['Source', sourceNote]
+  ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
+
+  document.getElementById('payee-sub').textContent =
+    payeeRows.length + ' counterparties across ' + settled.length + ' settled payments';
+  document.getElementById('payees').innerHTML = payeeRows.map(([addr, total]) => `
+    <div style="margin-bottom:13px">
+      <div style="display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:12px;margin-bottom:5px">
+        <span style="color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(shortAddr(addr))}</span>
+        <span style="flex-shrink:0">${esc(xrp(total))}</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(3, (total / top) * 100).toFixed(1)}%"></div></div>
+    </div>`).join('') || '<p class="note" style="margin:0">No settled payments in this file.</p>';
+
+  document.getElementById('tablemeta').textContent =
+    (doc.schema || 'agent-audit/1') + ' · ' + ev.length + ' events';
+
+  document.getElementById('rows').innerHTML = ev.map(e => {
+    const isRef = e.outcome === 'refused';
+    const inf = e.evidence === 'inferred';
+    const hash = e.tx_hash
+      ? (e.explorer_url
+          ? `<a href="${esc(e.explorer_url)}" rel="noreferrer">${esc(shortHash(e.tx_hash))}</a>`
+          : esc(shortHash(e.tx_hash)))
+      : '<span style="color:#55675E">—</span>';
+    const evidence = e.evidence
+      ? (inf ? `<span class="inferred"><span class="word">inferred</span></span>` : esc(e.evidence))
+      : '<span style="color:#55675E">—</span>';
+    return `<tr class="${isRef ? 'refused' : ''}" title="${esc(e.summary || '')}">
+      <td class="time">${esc(e.ts || '')}</td>
+      <td>${esc(e.stage || '')}</td>
+      <td class="actor">${esc(e.actor || '')}</td>
+      <td class="outcome">${esc(e.outcome || '')}</td>
+      <td class="amount">${esc(e.amount != null ? e.amount + (e.unit ? ' ' + e.unit : '') : '—')}</td>
+      <td class="evidence">${evidence}</td>
+      <td>${hash}</td>
+    </tr>`;
+  }).join('');
+
+  const actors = [...new Set(refused.map(e => e.actor))];
+  document.getElementById('actor-note').innerHTML = refused.length
+    ? `Read the actor column. ${refused.length} refusal${refused.length > 1 ? 's' : ''} in this file,
+       by <span style="font-family:var(--mono);color:var(--green)">${esc(actors.join(', '))}</span>.
+       The agent's own code declined nothing.`
+    : `No refusals in this file. It holds only what the ledger can evidence, and a refusal leaves no trace
+       on a ledger. Run the device proof to record one.`;
+
+  const i = document.getElementById('i-label');
+  if (refused.length) {
+    i.textContent = 'Refused';
+    document.getElementById('i-big').textContent = refused.length;
+    document.getElementById('i-sub').textContent = 'by ' + actors.join(', ');
+    document.getElementById('i-claim').textContent =
+      'That someone other than the agent stopped these payments.';
+    document.getElementById('i-ev-head').textContent = 'Evidence · ' +
+      [...new Set(refused.map(e => e.evidence || 'unmarked'))].join(', ');
+    document.getElementById('i-ev').textContent = refused[0].summary || '—';
+  } else {
+    i.textContent = 'Rows marked inferred';
+    document.getElementById('i-big').textContent = inferred.length;
+    document.getElementById('i-sub').textContent = 'of ' + ev.length + ' events';
+    document.getElementById('i-claim').textContent = inferred.length
+      ? 'That the owner pressed approve on the bound device.'
+      : 'Every event in this file was observed.';
+    document.getElementById('i-ev-head').textContent = 'Evidence · inferred';
+    document.getElementById('i-ev').textContent = inferred.length
+      ? ((inferred[0].detail && inferred[0].detail.basis) || inferred[0].summary || '—')
+      : 'Nothing is inferred here.';
+  }
+
+  document.getElementById('essentials').innerHTML = [
+    ['Events', String(ev.length)],
+    ['Settled', String(settled.length)],
+    ['Refused', String(refused.length)],
+    ['Inferred', String(inferred.length)],
+    ['Network', doc.network || '—']
+  ].map(([k, v]) => `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0">
+      <span style="font-size:12px;color:var(--text-2)">${esc(k)}</span>
+      <span style="font-family:var(--mono);font-size:13px;flex-shrink:0">${esc(v)}</span>
+    </div>`).join('');
+
+  document.getElementById('shell').hidden = false;
+}
+
+async function load(path) {
+  const res = await fetch(path, { cache: 'no-store' });
+  if (!res.ok) throw new Error(path + ' returned HTTP ' + res.status);
+  return res.json();
+}
+
+(async () => {
+  let doc = null, note = '';
+  try {
+    doc = await load('events.json');
+    note = 'audit/events.json';
+  } catch (err) {
+    document.getElementById('failmsg').textContent = String(err.message || err);
+    document.getElementById('fail').hidden = false;
+    return;
+  }
+  // A device proof run writes observed presses and refusals here. Optional.
+  try {
+    const extra = await load('device-run.json');
+    if (Array.isArray(extra.events) && extra.events.length) {
+      doc.events = doc.events.concat(extra.events)
+        .sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+      note += ' + audit/device-run.json';
+    }
+  } catch (ignored) { /* absent is the normal case */ }
+
+  if (doc.schema !== 'agent-audit/1') {
+    document.getElementById('failmsg').textContent =
+      'File is not agent-audit/1 (found: ' + doc.schema + ').';
+    document.getElementById('fail').hidden = false;
+    return;
+  }
+  render(doc, note);
+})();
+</script>
+</body>
+</html>

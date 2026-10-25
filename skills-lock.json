@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "dmk-business-logic": {
+      "source": "ledgerhq/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/dmk/dmk-business-logic/SKILL.md",
+      "computedHash": "4b351e1132a6e61a2dfd6537876f9f3c511e70a6bce6c03678f12d48c42b56da"
+    },
+    "dmk-intent-vocabulary": {
+      "source": "ledgerhq/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/dmk/dmk-intent-vocabulary/SKILL.md",
+      "computedHash": "d1aee657a1e1bf14ecb8f4a8693f9f3c4b42b5be5a2c0fc1260735d2e045b1c4"
+    },
+    "ledger-dmk-implementation": {
+      "source": "ledgerhq/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/dmk/ledger-dmk-implementation/SKILL.md",
+      "computedHash": "511acfdb0601986c2e037e258ae58176b72f4fba5bebf121068e085d63b4f326"
+    }
+  }
+}
