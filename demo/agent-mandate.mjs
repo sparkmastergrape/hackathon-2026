@@ -4,21 +4,33 @@
 //   node demo/agent-mandate.mjs --dry-run  # always dry run
 //   node demo/agent-mandate.mjs --live     # require credentials, call sandbox
 //
-// The story in five steps:
+// The story:
 //   1. The human grants a spend mandate through Consent Management. The agent
 //      holds a consent reference, never a card.
-//   2. We read back which entity the API user belongs to in Business Payment
+//   2. The cardholder authenticates the mandate.
+//   3. We read back which entity the API user belongs to in Business Payment
 //      Controls.
-//   3. The mandate's limits become network-enforced spend controls on a fresh
+//   4. The mandate's limits become network-enforced spend controls on a fresh
 //      virtual card. The agent gets the VCN; the real card stays untouched.
-//   4. An authorization report is the agent's spend history.
-//   5. Revoking the consent suspends the card. The mandate is the kill switch.
+//   5. An authorization report is the agent's spend history.
+//   6. The merchant gets paid out to a card via Mastercard Send, within the
+//      same mandate ceiling the virtual card enforces.
+//   7. Revoking the consent suspends the card. The mandate is the kill switch.
 //
 // Dry run prints the exact HTTP request each step would send, so the flow is
 // reviewable before any credential exists.
 
 import { createConsentClient, agentSpendMandate, readMandate } from '../mastercard/consent.mjs';
 import { createBpcClient, agentVirtualCardRequest, describeControls, expiryMonths } from '../mastercard/bpc.mjs';
+import {
+  createSendClient,
+  merchantPayoutRequest,
+  cardParty,
+  panUri,
+  describeDisbursement,
+  minorUnits,
+  HAPPY_PATH_REFERENCE,
+} from '../mastercard/send.mjs';
 import { hasEncryptionConfigured } from '../mastercard/jwe.mjs';
 
 const args = new Set(process.argv.slice(2));
@@ -44,8 +56,19 @@ const MANDATE = {
   validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
 };
 
+// The payout the agent owes the merchant for this task. Inside the mandate's
+// per-transaction ceiling, which is the point.
+const PAYOUT = {
+  amount: 18.5,
+  currency: 'USD',
+  // Published Mastercard Send sandbox test PANs — see docs/mastercard-test-cards.md.
+  platformFundingCard: { pan: '5102589999999921', expiry: '2077-02', cvc: '123' },
+  merchantCard: { pan: '5102589999999913', expiry: '2077-08', cvc: '123' },
+};
+
 const consent = createConsentClient({ dryRun });
 const bpc = createBpcClient({ dryRun });
+const send = createSendClient({ dryRun });
 
 let step = 0;
 function heading(title) {
@@ -134,6 +157,69 @@ async function main() {
       toDate: now.toISOString(),
     }),
   );
+
+  heading('Pay the merchant out to a card (Mastercard Send)');
+  // The mandate's per-transaction ceiling governs the payout too. Checking it
+  // here means a bad payout fails in our code rather than being declined at
+  // the network — same outcome, better error.
+  if (PAYOUT.amount > MANDATE.perTransactionLimit) {
+    throw new Error(
+      `Payout ${PAYOUT.amount} ${PAYOUT.currency} exceeds the mandate's ` +
+        `${MANDATE.perTransactionLimit} ${MANDATE.currency} per-transaction ceiling`,
+    );
+  }
+  console.log(
+    `Paying ${PAYOUT.amount} ${PAYOUT.currency} ` +
+      `(${minorUnits(PAYOUT.amount, PAYOUT.currency)} minor units) to the merchant's card,\n` +
+      `inside the ${MANDATE.perTransactionLimit} ${MANDATE.currency} per-transaction ceiling.`,
+  );
+  console.log(`Sandbox host: ${send.baseUrl}`);
+  console.log(
+    `Using the published Send sandbox test PANs. The sandbox only approves the\n` +
+      `reference "${HAPPY_PATH_REFERENCE}", so that is what a dry/sandbox run sends.\n`,
+  );
+
+  const payoutRequest = merchantPayoutRequest({
+    reference: HAPPY_PATH_REFERENCE,
+    amount: PAYOUT.amount,
+    currency: PAYOUT.currency,
+    senderAccount: panUri(PAYOUT.platformFundingCard),
+    sender: cardParty({
+      firstName: 'AP4M',
+      lastName: 'Platform',
+      address: {
+        line1: '101 Main St',
+        city: 'Chicago',
+        country_subdivision: 'IL',
+        postal_code: '60618',
+        country: 'USA',
+      },
+    }),
+    recipientAccount: panUri(PAYOUT.merchantCard),
+    recipient: cardParty({
+      firstName: 'Jane',
+      lastName: 'Smith',
+      nameOnAccount: 'Jane Smith',
+      address: {
+        line1: '234 Spiral Drive',
+        city: 'St. Louis',
+        country_subdivision: 'MO',
+        postal_code: '63368',
+        country: 'USA',
+      },
+    }),
+    statementDescriptor: 'AP4M*agent payout',
+    reconciliationData: { reference_id: MANDATE.agentId },
+  });
+  const payout = report(await send.sendDisbursement(payoutRequest));
+  if (payout) console.log(`\nDisbursement: ${describeDisbursement(payout, PAYOUT.currency)}`);
+  console.log(
+    '\ndecline_details=true means a declined payout returns 201 with the network\n' +
+      'response code instead of a bare 402 — a visible decline beats an exception.',
+  );
+
+  heading('Confirm the payout landed');
+  report(await send.retrieveDisbursementByRef(HAPPY_PATH_REFERENCE));
 
   heading('Revoke the mandate — and with it the card');
   console.log('Revoking consent is the kill switch. Suspend the card in the same breath.');

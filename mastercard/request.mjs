@@ -48,7 +48,7 @@ export function expandPath(template, params = {}) {
  * @param {boolean} opts.idempotent    send an Idempotency-Key on writes
  */
 export function createRequester({ baseUrl, dryRun = false, encryptPaths = [], idempotent = false }) {
-  return async function request(method, pathTemplate, { body, pathParams, headers = {} } = {}) {
+  return async function request(method, pathTemplate, { body, pathParams, query, headers = {} } = {}) {
     const path = expandPath(pathTemplate, pathParams);
     const needsEncryption = encryptPaths.includes(pathTemplate);
     const { body: wireBody, encrypted } = needsEncryption
@@ -60,10 +60,15 @@ export function createRequester({ baseUrl, dryRun = false, encryptPaths = [], id
       allHeaders['Idempotency-Key'] = randomUUID();
     }
 
+    const url = new URL(path.replace(/^\//, ''), `${baseUrl.replace(/\/$/, '')}/`);
+    for (const [key, value] of Object.entries(query ?? {})) {
+      if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
+    }
+
     const plan = {
       method,
       path,
-      url: new URL(path.replace(/^\//, ''), `${baseUrl.replace(/\/$/, '')}/`).toString(),
+      url: url.toString(),
       headers: allHeaders,
       body: wireBody,
       encryptionRequired: needsEncryption,

@@ -58,9 +58,10 @@ Credentials come from `.env` — see the Mastercard block in `.env.example`.
 
 ## Agent mandate demo
 
-The Mastercard leg: a human spend mandate in Consent Management becomes
-network-enforced spend controls on a Business Payment Controls virtual card,
-and revoking the mandate kills the card.
+The Mastercard leg, end to end: a human spend mandate in Consent Management
+becomes network-enforced spend controls on a Business Payment Controls virtual
+card, the merchant is paid out to a card through Mastercard Send, and revoking
+the mandate kills the card.
 
 ```bash
 npm run demo:mandate
@@ -82,14 +83,21 @@ The modules behind it:
 - [`mastercard/bpc.mjs`](mastercard/bpc.mjs) — Business Payment Controls
   client, plus `spendControlsFromMandate()`, which turns those same limits into
   a spec-valid `inControlRules` entry.
+- [`mastercard/send.mjs`](mastercard/send.mjs) — Mastercard Send Disbursements
+  client, plus `merchantPayoutRequest()`, `panUri()` and `minorUnits()` for
+  pushing a payout to a card.
 - [`mastercard/jwe.mjs`](mastercard/jwe.mjs) — JWE payload encryption, which
   Consent Management requires on three of its six endpoints.
 - [`mastercard/request.mjs`](mastercard/request.mjs) — per-service base URLs,
-  idempotency keys, error-envelope parsing, dry run.
+  query and idempotency handling, error-envelope parsing, dry run.
 
-Note the two hosts: Consent Management is on
-`sandbox.api.mastercard.com/openapis/authentication`, Business Payment Controls
-on `sandbox.apiedge.mastercard.com/commercial`.
+Note the three hosts — each service family has its own:
+
+| Service | Sandbox host |
+| --- | --- |
+| Consent Management | `sandbox.api.mastercard.com/openapis/authentication` |
+| Business Payment Controls | `sandbox.apiedge.mastercard.com/commercial` |
+| Send Disbursements | `sandbox.api.move.mastercard.com/send/static` |
 
 ## Tests
 

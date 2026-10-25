@@ -217,19 +217,39 @@ OpenAPI-generated clients.
 
 ## What's built in this repo
 
-Legs 1 and 2 of the suggested build below are implemented and dry-run tested:
-[`demo/agent-mandate.mjs`](../demo/agent-mandate.mjs) (`npm run demo:mandate`),
-on top of [`mastercard/consent.mjs`](../mastercard/consent.mjs) and
-[`mastercard/bpc.mjs`](../mastercard/bpc.mjs). It runs without credentials and
-prints the exact requests a live run would send.
+All three Mastercard legs of the suggested build below are implemented and
+dry-run tested: [`demo/agent-mandate.mjs`](../demo/agent-mandate.mjs)
+(`npm run demo:mandate`), on top of
+[`mastercard/consent.mjs`](../mastercard/consent.mjs),
+[`mastercard/bpc.mjs`](../mastercard/bpc.mjs) and
+[`mastercard/send.mjs`](../mastercard/send.mjs). It runs without credentials
+and prints the exact requests a live run would send.
 
 Things worth knowing that only showed up once the specs were read:
 
-- **Two different hosts.** Consent Management is on
+- **Three different hosts, one per service family.** Consent Management is on
   `sandbox.api.mastercard.com/openapis/authentication`. Business Payment
   Controls is on `sandbox.apiedge.mastercard.com/commercial` — not the
-  platform's usual host. New BPC customers use that `sandbox.apiedge` URL;
-  `mtf.apiedge.mastercard.com/commercial` still works for existing ones.
+  platform's usual host; new BPC customers use that URL, while
+  `mtf.apiedge.mastercard.com/commercial` still works for existing ones. Send
+  moved to `api.move.mastercard.com` in January 2026, with the sandbox at
+  `sandbox.api.move.mastercard.com/send/static` and MTF at the same host
+  without `/static`. Nothing warns you about this; a wrong host just 404s.
+- **The Send sandbox is a static one.** It returns canned responses, and it
+  only approves the disbursement reference `HAPPYPATH_DISB_000001` — any other
+  reference must be unique or you get "Duplicate value". That makes the payout
+  leg demoable with zero approvals, which is why it's the leg to build first if
+  access anywhere else stalls.
+- **Send amounts are minor-unit strings.** `"5300"` is $53.00, and the decimal
+  point is implied by the currency exponent (JPY has none, KWD has three). The
+  field is a string of up to 12 digits, not a number. `minorUnits()` handles
+  the conversion and the float-rounding trap — `19.99 * 100` is
+  `1998.9999999999998` in IEEE 754.
+- **`sanction_screening_override: true` is still required.** The Sanctions
+  Screening Service is suspended, but the spec says to send `true` regardless.
+- **Pass `decline_details=true` on a disbursement.** A declined payout then
+  returns 201 with the full transaction and the network response code, instead
+  of a bare 402. In a demo a visible decline beats an exception.
 - **Consent Management needs JWE.** Three of its six endpoints
   (`create-consents`, `start-authentication`, `verify-authentication`) are
   marked `x-mastercard-api-encrypted: true`: the whole body is encrypted into a
@@ -258,10 +278,12 @@ A three-leg demo that uses only self-serve sandbox surfaces:
 2. **Scoped credential** — Business Payment Controls issues a virtual card with
    a hard ceiling for this task; Commercial Event Notifications streams each
    authorization back into the UI.
-3. **Settlement** — the on-ledger XRPL/x402 leg this repo already has, with
-   Mastercard Send pushing the merchant payout to a card using the published
-   [test PANs](./mastercard-test-cards.md). BIN Lookup and the Currency
-   Conversion Calculator decorate the decision the agent makes.
+3. **Settlement** — Mastercard Send pushes the merchant payout to a card using
+   the published [test PANs](./mastercard-test-cards.md), as a Business
+   Disbursement (`payment_type: BDB`), with the mandate's per-transaction
+   ceiling checked before the call. The on-ledger XRPL/x402 leg this repo
+   already has sits alongside it. BIN Lookup and the Currency Conversion
+   Calculator decorate the decision the agent makes.
 
 Then name Agent Suite for Merchants out loud, and say this is the settlement
 layer that belongs under it.
