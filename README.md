@@ -41,7 +41,7 @@ a fresh sequence and fee. The browser never gets to choose what the device signs
 
 ## What is in here
 
-Two deliverables that share a repository and a set of measurements.
+Three deliverables that share a repository and a set of measurements.
 
 ### 1. `ledger-approver/` — the human-approval gate
 
@@ -99,6 +99,16 @@ names no testnet identifier anywhere. That can route a team onto the wrong netwo
 it is a gap, and filing it as an error invites a one-line refusal from anyone who checks
 mainnet. Both chain IDs are measured: `eth_chainId` against
 `https://rpc.testnet.xrplevm.org` returns `0x161c28` (1449000).
+
+### 3. `mastercard/` — the Mastercard track
+
+The same idea carried onto card rails: a human spend mandate in Consent Management
+becomes network-enforced spend controls on a Business Payment Controls virtual card, the
+merchant is paid out to a card through Mastercard Send, and revoking the mandate kills
+the card. Five service clients, OAuth 1.0a signing, JWE payload encryption, and a
+dry-run demo that prints the exact HTTP each step would send.
+
+Detail is in [The Mastercard track](#the-mastercard-track) below.
 
 ## Status
 
@@ -259,6 +269,55 @@ sequence. **Not measured:** the x402 leg (`example-x402-agent.mjs` with
 been run end to end from this checkout. If the demo needs to show the 402 itself rather
 than the payment it causes, rehearse that pair first.
 
+## The Mastercard track
+
+A human spend mandate becomes network-enforced spend controls on a virtual card, the
+merchant is paid out to that card, and revoking the mandate kills it.
+
+**Measured.** `npm test` passes 82 tests with no network and no credentials. They check
+that the request bodies match the published OpenAPI specs: required fields, `negate`
+flags, ISO-4217 numeric currency codes, offset-bearing timestamps, the `yyyy-MM` expiry
+regex, and the 22-character statement-descriptor limit.
+
+**Not done.** Nothing here has run against Mastercard's sandbox. `npm run demo:mandate`
+is a dry run that prints the exact HTTP each step would send; the `--live` path needs a
+Developer Dashboard project, a `.p12`, and the encryption keys, none of which exist yet.
+So the flow is reviewable but unproven, and it has landed no transaction — the
+eligibility evidence is the XRPL side, above.
+
+```bash
+npm run demo:mandate            # dry run, prints every request
+node demo/agent-mandate.mjs --live   # needs credentials in .env
+npm run mcp:mastercard          # Mastercard's agent toolkit as an MCP server
+```
+
+The modules:
+
+| Module | What it does |
+|---|---|
+| [`mastercard/consent.mjs`](mastercard/consent.mjs) | Consent Management, plus `agentSpendMandate()` encoding an agent's limits into a consent record |
+| [`mastercard/bpc.mjs`](mastercard/bpc.mjs) | Business Payment Controls, plus `spendControlsFromMandate()` turning those limits into a spec-valid `inControlRules` |
+| [`mastercard/send.mjs`](mastercard/send.mjs) | Send Disbursements, plus `merchantPayoutRequest()`, `panUri()`, `minorUnits()` |
+| [`mastercard/bin.mjs`](mastercard/bin.mjs) | BIN Lookup, plus `payoutPreflight()` — reads MoneySend indicators before spending the call |
+| [`mastercard/fx.mjs`](mastercard/fx.mjs) | Currency Conversion Calculator, plus `unwrap()` for in-band errors |
+| [`mastercard/jwe.mjs`](mastercard/jwe.mjs) | JWE payload encryption, required on three of Consent Management's six endpoints |
+| [`mastercard/sign.mjs`](mastercard/sign.mjs), [`request.mjs`](mastercard/request.mjs) | OAuth 1.0a signed fetch; base URLs, idempotency, error envelopes, dry run |
+
+Sandbox base URLs, one per service family:
+
+| Service | Sandbox base URL |
+|---|---|
+| Consent Management | `sandbox.api.mastercard.com/openapis/authentication` |
+| Business Payment Controls | `sandbox.apiedge.mastercard.com/commercial` |
+| Send Disbursements | `sandbox.api.move.mastercard.com/send/static` |
+| BIN Lookup | `sandbox.api.mastercard.com/bin-resources` |
+| Currency Conversion | `sandbox.api.mastercard.com/settlement/currencyrate` |
+
+Credentials come from the Mastercard block in `.env.example`. `server.mjs` runs
+Mastercard's agent toolkit over stdio and needs none of them; `.mcp.json` registers it.
+Further reading: [the track playbook](docs/mastercard-track-playbook.md) and
+[sandbox test cards](docs/mastercard-test-cards.md).
+
 ## Run it
 
 Node 22.13+. Chrome, Edge or Brave for the approver app (WebHID is Chromium-only and
@@ -316,6 +375,9 @@ that last case.
 |---|---|
 | `ledger-approver/` | Policy engine, gate service, React approver app, tests |
 | `filings/` | Seven DX defect filings and device evidence |
+| `mastercard/` | Five Mastercard service clients, OAuth 1.0a signing and JWE |
+| `demo/`, `test/`, `server.mjs` | The mandate demo, 82 offline tests, the Mastercard MCP server |
+| `docs/` | Mastercard track playbook and sandbox test cards |
 | `vi-replay/` | Verifiable-intent replay fixtures and the audit validator |
 | `context-workspace/` | The staged pipeline the filings were produced through |
 | `ap4m-agent.cjs`, `run-ap4m.cjs`, `close-channel.cjs` | The AP4M payment agent and its runner |
