@@ -1,8 +1,10 @@
-# Ledger-gated agent payments on XRPL
+# Autonomous agent payments on XRPL, with a Ledger at the risk boundary
 
-A payment agent that cannot move money past a threshold without a human signature on a
-Ledger device — plus six documented defects found in the sponsors' own SDKs and docs
-while building it.
+An agent that meets an HTTP 402, decides to pay, signs the voucher and settles RLUSD to
+the merchant — with no human in the loop. Payments that cross a risk boundary are the
+exception: those alone stop and wait for a signature on a Ledger device.
+
+Plus six documented defects found in the sponsors' own SDKs and docs while building it.
 
 Built at the Ledger x XRPL hackathon (XRPL Commons / XRP Ledger Foundation / Swell,
 New York, 24–25 October 2026), using the Mastercard AP4M payment kit on the XRPL EVM
@@ -12,14 +14,20 @@ Testnet only. Every key in this repository is a testnet key.
 
 ## The idea
 
-An autonomous agent with a funded budget is useful and unnerving in the same breath.
-The useful part is that it pays for things without waiting for a person. The unnerving
-part is the same sentence.
+The agent pays by itself. It receives a 402, chooses to pay, signs a voucher and settles,
+with no person anywhere in the path — which is the entire point of a machine that buys
+things. Every AP4M payment in the [Transactions](#transactions) section below ran that
+way, start to finish. The one transaction there that a human signed is the gate's
+exception path, and it is labelled as such.
 
-So the boundary is the product. Small, clean payments release automatically. Anything
-over a cap, newly-seen, or flagged by compliance stops and waits for a human to approve
-it on a Ledger device. A sanctions hit or a critical ledger-health reading cannot be
-approved by anyone at all.
+That autonomy is also what makes it unnerving, and the second half of the product is the
+answer: the agent runs unattended right up to the point where a payment is large,
+unfamiliar or compliance-flagged, and only there does it stop for a human signature on a
+Ledger device. A sanctions hit or a critical ledger-health reading cannot be approved by
+anyone at all.
+
+Most payments never touch the gate, and that is the design. A gate that stops everything
+is just a slow person.
 
 ```
 agent / pipeline → POST /intents → policy → auto-release (hot wallet)
@@ -159,10 +167,30 @@ chain-of-custody, including the claim-ID matching, is in
 | Agent redeems a signed voucher (`redeemVoucher`, 147,087 gas) | `0xe39c8fb5b1868c94db686f89a614710bcc884c16cba8cc5fe9484a99cc5e0bf6` |
 | Vault pays the merchant 0.01 RLUSD | `0x23c4beb9264b7ee3f0e2ef81182c1605f8d7045954aa1c750386e6e243389a6c` |
 
-The claim emitted by `PaymentLedger` is a log inside the redemption transaction, not a
-transaction of its own. The claim IDs that appear in the AP4M portal — `0x99e40a07…` for
-payment 1 and `0xce2bb492…` for payment 2 — were matched against the event-log topics of
-those two redemptions, which is what ties the portal's receipt to the chain.
+### The redemption event — what to open
+
+AP4M's judging asks for a `VoucherRedeemed` event on the explorer at the `PaymentLedger`
+address. It is a **log inside the redemption transaction**, not a transaction of its own,
+so open either redemption hash above and read its logs:
+
+```
+https://explorer.testnet.xrplevm.org/tx/0xcb1f2dabc921537530af35d8686b8aa21e3d8ce3fe9560823f79a471ffc33d9f?tab=logs
+```
+
+**Measured.** That log is emitted by `PaymentLedger`
+(`0xcAB42800A5ECF0D253Fa2581Bb3334B4DAEfaE91`) with
+`topic0 = 0xe3de5c3755abd99a01530fd79b85708f309453f6d26eb9bb5dde4c14cd5f7175`, and
+carries `channelId` and `claimId` as indexed topics. The claim IDs shown in the AP4M
+portal — `0x99e40a07…` for payment 1, `0xce2bb492…` for payment 2 — match those topics,
+which is what ties the portal's receipt to the chain.
+
+**Not confirmed.** That `topic0` is the event *named* `VoucherRedeemed`. The explorer
+reports the contract source as unverified, so it renders the raw topic rather than a
+name, and the signature could not be recovered: `keccak256` of eight plausible
+`VoucherRedeemed(...)` signatures matched none of it. Treat the name as AP4M's label for
+this log, and the `topic0` plus the matching `claimId` as the evidence. Verifying the
+contract on the explorer would close this, and would also let judges read the event name
+the rubric asks them to look for.
 
 Verify any of them without AP4M being reachable at all:
 
@@ -182,6 +210,28 @@ RPC_URL=<your node> node verify-receipt-onchain.mjs   0xcb1f2dabc921537530af35d8
 
 The agent and payout addresses differ, which AP4M requires: the party authorising a
 payment cannot be the party receiving it.
+
+## The three-minute demo
+
+Live, on testnet, no recorded output. `npm run predemo` is the gate on starting at all:
+it checks the wallets, the registration and the gas, and exits non-zero if the run would
+fail. Do not skip it in front of an audience.
+
+| # | Step | Command | What the room sees |
+|---|---|---|---|
+| 1 | Pre-flight | `npm run predemo` | exit 0 — wallets funded, agent registered |
+| 2 | Agent pays, unattended | `npm run demo` | channel opened, voucher signed, settled, closed |
+| 3 | Proof, from a public node | `node verify-receipt-onchain.mjs <hash>` | the redemption and the RLUSD payout, read from chain |
+| 4 | The boundary | `ledger-approver/` — seed a large payment | it stops; approve it on the device |
+
+Steps 1–3 are the autonomy story and need no person beyond pressing return. Step 4 is the
+exception path, and is the only point a human appears.
+
+**Measured** for steps 1–3: the hashes in [Transactions](#transactions) came from this
+sequence. **Not measured:** the x402 leg (`example-x402-agent.mjs` with
+`example-x402-merchant.mjs`) is where the literal 402 response appears, and it has not
+been run end to end from this checkout. If the demo needs to show the 402 itself rather
+than the payment it causes, rehearse that pair first.
 
 ## Run it
 
