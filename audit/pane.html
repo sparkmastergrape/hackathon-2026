@@ -150,7 +150,7 @@
           <thead><tr>
             <th scope="col">Time</th><th scope="col">Stage</th><th scope="col" class="actor">Actor</th>
             <th scope="col">Outcome</th><th scope="col" style="text-align:right">Amount</th>
-            <th scope="col">Evidence</th><th scope="col">Transaction</th>
+            <th scope="col">Evidence</th><th scope="col">Ledger</th><th scope="col">Transaction</th>
           </tr></thead>
           <tbody id="rows"></tbody>
         </table>
@@ -215,11 +215,62 @@ function xrp(drops) {
   return Number.isFinite(n) ? (n / DROPS).toFixed(6).replace(/0+$/, '').replace(/\.$/, '') + ' XRP' : String(drops);
 }
 
+/**
+ * What goes in the Amount column.
+ *
+ * An `amount` always carries a `unit`, because agent-audit/1 refuses one
+ * without the other. RLUSD is not in that unit enum, so an EVM voucher row
+ * has no `amount` at all and its figures sit in detail.rlusd_amounts. Those
+ * are read back here and labelled RLUSD explicitly, so a reader cannot take
+ * them for the drops in the rows above.
+ *
+ * Position 7 is the per-payment delta, not the running total: across all 84
+ * logs read so far, position 5 + position 7 equals position 6 exactly, which
+ * is the cumulative voucher accounting AGENTS.md describes.
+ */
+function amountCell(e) {
+  if (e.amount != null) return e.amount + (e.unit ? ' ' + e.unit : '');
+  const a = e.detail && e.detail.rlusd_amounts;
+  if (Array.isArray(a) && a.length === 3) return a[2].formatted + ' RLUSD';
+  return '—';
+}
+
+/**
+ * What to say when there are no refusals, which depends on the ledger.
+ *
+ * The pane used to say flatly that "a refusal leaves no trace on a ledger".
+ * That is true of the classic XRP Ledger: a refused payment was never signed
+ * and never submitted, so there is nothing to find. It is NOT true of the EVM
+ * sidechain, where a refusal is a mined transaction with a hash and a receipt
+ * whose status is 0. Saying it of both would excuse an empty table on a chain
+ * that does record refusals, which is the one place the excuse is wrong.
+ */
+function noRefusalNote(ledgers) {
+  const kinds = new Set(ledgers.map(l => String(l.network || '').split(':')[0]));
+  const parts = ['No refusals in this file.'];
+  if (kinds.has('xrpl')) {
+    parts.push('On the XRP Ledger a refusal leaves no trace, because nothing was '
+      + 'signed and nothing submitted. Run the device proof to record one.');
+  }
+  if (kinds.has('eip155')) {
+    parts.push('On the EVM sidechain a refusal <em>does</em> leave a trace — a mined '
+      + 'transaction whose receipt status is 0 — so an empty table here means none '
+      + 'was found, not that none could be.');
+  }
+  return parts.join(' ');
+}
+
 function render(doc, sourceNote) {
   const ev = Array.isArray(doc.events) ? doc.events : [];
   const settled = ev.filter(e => e.stage === 'settle' && e.outcome === 'ok');
   const refused = ev.filter(e => e.outcome === 'refused');
   const inferred = ev.filter(e => e.evidence === 'inferred');
+  // Two unrelated things are marked `inferred`, and conflating them would make
+  // the Inspector claim a device press for every decoded EVM log. A device
+  // decision infers a human act from a signature; an EVM voucher row infers
+  // only how to lay out an undecodable event's parameters.
+  const devInferred = inferred.filter(e => e.stage === 'device_decision');
+  const layoutInferred = inferred.filter(e => e.stage === 'voucher_redeemed');
   const amounts = settled.map(e => Number(e.amount)).filter(Number.isFinite);
   const payees = {};
   for (const e of settled) {
@@ -233,7 +284,11 @@ function render(doc, sourceNote) {
   document.getElementById('r-ref').textContent = refused.length;
   document.getElementById('r-inf').textContent = inferred.length;
   document.getElementById('r-cp').textContent = payeeRows.length;
-  document.getElementById('r-net').textContent = doc.network || '—';
+  const ledgers = Array.isArray(doc.ledgers) && doc.ledgers.length
+    ? doc.ledgers
+    : [{ network: doc.network, source: doc.source, file: sourceNote, count: ev.length }];
+  document.getElementById('r-net').textContent =
+    ledgers.length > 1 ? ledgers.length + ' ledgers' : (doc.network || '—');
   document.getElementById('r-count').textContent = ev.length;
 
   document.getElementById('asof').textContent =
@@ -251,15 +306,21 @@ function render(doc, sourceNote) {
 
   const times = ev.map(e => e.ts).filter(Boolean).sort();
   document.getElementById('facts').innerHTML = [
-    ['Network', doc.network || '—'],
+    ...ledgers.map((l, n) => [
+      ledgers.length > 1 ? 'Ledger ' + (n + 1) : 'Network',
+      (l.network || '—') + ' · ' + l.count + ' events · read via ' + (l.source || 'unrecorded'),
+    ]),
     ['Events in file', ev.length + '  (' + [...new Set(ev.map(e => e.stage))].length + ' stages)'],
     ['First and last event', times.length ? times[0] + ' → ' + times[times.length - 1] : '—'],
     ['Counterparties', String(payeeRows.length)],
-    ['Read from', doc.source || 'unrecorded'],
-    ['File', sourceNote]
+    ['Files', sourceNote]
   ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
 
-  document.getElementById('provider').textContent = doc.source || 'an unrecorded node';
+  // Each ledger was read through its own node, so no single provider name is
+  // true of the whole pane once more than one is merged.
+  document.getElementById('provider').textContent = ledgers.length > 1
+    ? ledgers.map(l => l.source || 'an unrecorded node').join(', and ')
+    : (doc.source || 'an unrecorded node');
   document.getElementById('payee-sub').textContent =
     payeeRows.length + ' counterparties across ' + settled.length + ' settled payments';
   document.getElementById('payees').innerHTML = payeeRows.map(([addr, total]) => `
@@ -290,8 +351,9 @@ function render(doc, sourceNote) {
       <td>${esc(e.stage || '')}</td>
       <td class="actor">${esc(e.actor || '')}</td>
       <td class="outcome">${esc(e.outcome || '')}</td>
-      <td class="amount">${esc(e.amount != null ? e.amount + (e.unit ? ' ' + e.unit : '') : '—')}</td>
+      <td class="amount">${esc(amountCell(e))}</td>
       <td class="evidence">${evidence}</td>
+      <td class="time">${esc(e._net || '—')}</td>
       <td>${hash}</td>
     </tr>`;
   }).join('');
@@ -301,8 +363,7 @@ function render(doc, sourceNote) {
     ? `Read the actor column. ${refused.length} refusal${refused.length > 1 ? 's' : ''} in this file,
        by <span style="font-family:var(--mono);color:var(--green)">${esc(actors.join(', '))}</span>.
        The agent's own code declined nothing.`
-    : `No refusals in this file. It holds only what the ledger can evidence, and a refusal leaves no trace
-       on a ledger. Run the device proof to record one.`;
+    : noRefusalNote(ledgers);
 
   const i = document.getElementById('i-label');
   if (refused.length) {
@@ -317,13 +378,23 @@ function render(doc, sourceNote) {
   } else {
     i.textContent = 'Rows marked inferred';
     document.getElementById('i-big').textContent = inferred.length;
-    document.getElementById('i-sub').textContent = 'of ' + ev.length + ' events';
-    document.getElementById('i-claim').textContent = inferred.length
-      ? 'That the owner pressed approve on the bound device.'
+    document.getElementById('i-sub').textContent = devInferred.length && layoutInferred.length
+      ? devInferred.length + ' device, ' + layoutInferred.length + ' event layout'
+      : 'of ' + ev.length + ' events';
+    // The two inferences claim different things, so the Inspector must not
+    // state one of them while counting both.
+    document.getElementById('i-claim').textContent =
+      devInferred.length && layoutInferred.length
+        ? 'Two different inferences. That the owner pressed approve on the bound '
+          + 'device, and separately, how to read an event the chain cannot decode.'
+      : devInferred.length ? 'That the owner pressed approve on the bound device.'
+      : layoutInferred.length ? 'How to read an event the chain cannot decode. No device act is inferred here.'
       : 'Every event in this file was observed.';
     document.getElementById('i-ev-head').textContent = 'Evidence · inferred';
-    document.getElementById('i-ev').textContent = inferred.length
-      ? ((inferred[0].detail && inferred[0].detail.basis) || inferred[0].summary || '—')
+    const basisOf = e => (e.detail && (e.detail.basis || e.detail.layout_basis)) || e.summary || '—';
+    document.getElementById('i-ev').textContent = devInferred.length
+      ? basisOf(devInferred[0])
+      : layoutInferred.length ? basisOf(layoutInferred[0])
       : 'Nothing is inferred here.';
   }
 
@@ -358,15 +429,41 @@ async function load(path) {
     document.getElementById('fail').hidden = false;
     return;
   }
+  // Tag every event with the ledger it was read from. `doc.network` is one
+  // scalar, and two chains are merged below, so without this the pane would
+  // print one network and quietly attribute the other's rows to it.
+  const ledgers = [];
+  const adopt = (d, file) => {
+    const rows = Array.isArray(d.events) ? d.events : [];
+    for (const e of rows) { e._net = d.network || '—'; }
+    ledgers.push({ network: d.network, source: d.source, file, count: rows.length });
+    return rows;
+  };
+  doc.events = adopt(doc, 'audit/events.json');
+
   // A device proof run writes observed presses and refusals here. Optional.
   try {
     const extra = await load('device-run.json');
-    if (Array.isArray(extra.events) && extra.events.length) {
-      doc.events = doc.events.concat(extra.events)
-        .sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+    const rows = adopt(extra, 'audit/device-run.json');
+    if (rows.length) {
+      doc.events = doc.events.concat(rows);
       note += ' + audit/device-run.json';
-    }
+    } else { ledgers.pop(); }
   } catch (ignored) { /* absent is the normal case */ }
+
+  // The EVM sidechain leg, written by audit/evm_voucher_watch.mjs. Also
+  // optional: the pane is complete without it and says which files it read.
+  try {
+    const evm = await load('evm-events.json');
+    const rows = adopt(evm, 'audit/evm-events.json');
+    if (rows.length) {
+      doc.events = doc.events.concat(rows);
+      note += ' + audit/evm-events.json';
+    } else { ledgers.pop(); }
+  } catch (ignored) { /* absent is the normal case */ }
+
+  doc.events.sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+  doc.ledgers = ledgers;
 
   if (doc.schema !== 'agent-audit/1') {
     document.getElementById('failmsg').textContent =
