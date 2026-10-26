@@ -178,3 +178,14 @@ speculos-xrp/shots/
 # refusal-case scratch snapshots (regenerate with refusal-witness.mjs)
 .refusal-witness-*.json
 *-sdk-state/
+
+# Live pane tape: decoded events only, but it is run output, not source.
+live/tape.jsonl
+live/demo.log
+.live-demo-state/
+.live-merchant-state-*/
+
+# Retired and probe merchant/agent stores: sqlite + locks, run state not source.
+# The dated one is a store stranded by a pre-fix start; kept on disk, never committed.
+.x402-merchant-state.*/
+.gate-*-merchant-state*/

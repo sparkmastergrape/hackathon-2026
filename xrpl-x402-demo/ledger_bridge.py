@@ -141,12 +141,35 @@ def _find_settled_payment(
     The InvoiceID is what makes this safe: it is the only field that ties a
     ledger entry back to one 402 quote, so a match is proof this exact invoice
     was paid and not merely that some payment happened.
+
+    Asks the WebSocket first — it is told the moment the ledger validates,
+    instead of discovering it up to four seconds later — and falls back to the
+    polling below when no socket is configured or the socket fails. The
+    fallback is slower, not wrong, so a dead socket costs latency and nothing
+    else.
     """
     import time
 
     import requests as _requests
 
     want = (invoice_id_field or "").upper()
+
+    try:
+        from settlement_watch import await_settlement
+
+        pushed = await_settlement(
+            account=account,
+            destination=destination,
+            invoice_id_field=want,
+            timeout=float(attempts) * delay,
+        )
+        if pushed:
+            print(f"  settlement confirmed by {pushed['provider']}, {pushed['how']}")
+            return {"hash": pushed["hash"], "tx": pushed["tx"]}
+    except ImportError:
+        pass  # socket module absent; the poller below still answers
+
+    print("  falling back to polling account_tx")
     for attempt in range(attempts):
         if attempt:
             time.sleep(delay)
