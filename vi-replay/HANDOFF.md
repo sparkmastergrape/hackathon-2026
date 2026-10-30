@@ -256,10 +256,7 @@ This session committed nothing in this repository. JD said "Leave the commit to
 me". `vi-replay/` is untracked. `.gitignore` line 157 is `vi-replay/*.json`, so
 every generated file stays out of git.
 
-This session made one commit in the other repository. It is `653ea54`, in the
-`financial-autonomy-stack` worktree. It corrects the signature encoding section
-of `_canon/verifiable-intent-wire-spec.md`. It is local. Nobody pushed it,
-because another session manages that pull request branch.
+This session made one commit in another repository. It is local and not pushed.
 
 ## One practice to keep
 
