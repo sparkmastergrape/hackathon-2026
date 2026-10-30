@@ -184,8 +184,7 @@ measured; that is out of date.
 `vi-chain-fixture-generator.py` is the earlier script that first proved a full
 L1/L2/L3 chain builds and verifies, and that `verify_chain` ignores constraints.
 Superseded by `vi-replay-fixture.py` for the beat; kept because it is the original
-measurement. `INVENTORY-dnsmoney-ucap-faistack-hackathons.md` is a working
-inventory of this project's scattered surfaces, not build code.
+measurement.
 
 ## Two output files, on purpose
 
